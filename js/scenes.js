@@ -16,15 +16,16 @@ import { createSpaceInvaders, createSpaceInvadersMask } from './factory.js';
 import { CoreCannon, LargeInvader, MediumInvader, SmallInvader, UfoInvader } from './invaders.js';
 import { Menu } from './menu.js';
 import { SoundsManager } from './sounds-manager.js';
-import { ObjectsOnStage } from './stage.js';
 import { resolvePlayerProjectileCollisions } from './systems/collision-system.js';
 import { renderStageEffects, updateStageEffects } from './systems/effects-system.js';
+import { animateInvaders, moveInvadersTroopers, renderInvaders } from './systems/invader-system.js';
 import {
   arePlayerProjectilesInactive,
   renderPlayerProjectiles,
   updatePlayerProjectiles,
 } from './systems/projectile-system.js';
 import { applyCollisionScoring } from './systems/scoring-system.js';
+import { createGameRuntime } from './runtime-state.js';
 
 export const Scene = function (session) {
   this.sceneName = '';
@@ -113,6 +114,7 @@ export const SceneInstructions = function (session) {
 
   let elapsedMs = 0;
   let hasRequestedNextScene = false;
+  let instructionAvatars = [];
   const animationCancels = [];
 
   const trackAnimation = (cancelFn) => {
@@ -138,7 +140,7 @@ export const SceneInstructions = function (session) {
     const medium = new MediumInvader(cv.width / 3.18, cv.height / 1.63);
     const large = new LargeInvader(cv.width / 3.2, cv.height / 1.47);
 
-    ObjectsOnStage.avatars = [ufo, small, medium, large];
+    instructionAvatars = [ufo, small, medium, large];
     ctx.fillText('*SCORE   ADVANCE   TABLE*', cv.width / 3.9, cv.height / 2.1);
   };
 
@@ -159,8 +161,8 @@ export const SceneInstructions = function (session) {
             return;
           }
 
-          for (let i = 0; i < ObjectsOnStage.avatars.length; i += 1) {
-            ObjectsOnStage.avatars[i].render();
+          for (let i = 0; i < instructionAvatars.length; i += 1) {
+            instructionAvatars[i].render();
           }
 
           const mysteryCancel = typeWriter(
@@ -256,6 +258,7 @@ export const SceneInstructions = function (session) {
 
   this.exit = function () {
     cancelAnimations();
+    instructionAvatars = [];
     Scene.prototype.exit.call(this);
   };
 };
@@ -267,6 +270,7 @@ export const SceneGame = function (session) {
 
   const timeScene = 14;
   const introDelayMs = 2000;
+  let gameRuntime = null;
   let count = 0;
   let introElapsedMs = 0;
   let gameplayStarted = false;
@@ -274,17 +278,18 @@ export const SceneGame = function (session) {
   let controlsCannon = null;
 
   const initializeGameplay = () => {
-    ObjectsOnStage.stageIsOver = false;
+    gameRuntime.stageIsOver = false;
 
     const ufo1 = new UfoInvader(50, 90);
-    ObjectsOnStage.ufo = [ufo1];
-    ObjectsOnStage.cannon = new CoreCannon(50, 580);
-    ObjectsOnStage.alienInvaders = createSpaceInvaders();
-    ObjectsOnStage.laserCannon = [];
-    ObjectsOnStage.shotEffects = [];
-    ObjectsOnStage.scorePopups = [];
+    gameRuntime.ufo = [ufo1];
+    gameRuntime.cannon = new CoreCannon(50, 580);
+    gameRuntime.cannon.stageState = gameRuntime;
+    gameRuntime.alienInvaders = createSpaceInvaders();
+    gameRuntime.laserCannon = [];
+    gameRuntime.shotEffects = [];
+    gameRuntime.scorePopups = [];
 
-    masks = createSpaceInvadersMask(ObjectsOnStage.alienInvaders);
+    masks = createSpaceInvadersMask(gameRuntime.alienInvaders);
     masks.create();
 
     gameplayStarted = true;
@@ -293,27 +298,27 @@ export const SceneGame = function (session) {
   const updateGameplayState = () => {
     const toggle = count % timeScene === 0;
 
-    if (ObjectsOnStage.ufo[0].x > cv.width + 100 || ObjectsOnStage.ufo[0].x < -100) {
-      ObjectsOnStage.ufo[0].direction *= -1;
+    if (gameRuntime.ufo[0].x > cv.width + 100 || gameRuntime.ufo[0].x < -100) {
+      gameRuntime.ufo[0].direction *= -1;
     }
 
-    ObjectsOnStage.ufo[0].move(ObjectsOnStage.ufo[0].velocity, 0);
-    ObjectsOnStage.animateInvaders(count % 10 === 0);
-    updatePlayerProjectiles(ObjectsOnStage);
-    const collisionEvents = resolvePlayerProjectileCollisions(ObjectsOnStage);
-    applyCollisionScoring(this.session, ObjectsOnStage, collisionEvents);
-    updateStageEffects(ObjectsOnStage);
+    gameRuntime.ufo[0].move(gameRuntime.ufo[0].velocity, 0);
+    animateInvaders(gameRuntime, count % 10 === 0);
+    updatePlayerProjectiles(gameRuntime);
+    const collisionEvents = resolvePlayerProjectileCollisions(gameRuntime);
+    applyCollisionScoring(this.session, gameRuntime, collisionEvents);
+    updateStageEffects(gameRuntime);
 
     if (masks.animatedFinished) {
       if (count % 2 === 0) {
-        ObjectsOnStage.moveInvadersTroopers(8, 8);
+        moveInvadersTroopers(gameRuntime, 8, 8);
       }
 
       if (count % 2 === 0) {
         if (toggle) {
           // SoundsManager.playSoundTrack();
         }
-        if (ObjectsOnStage.ufo[0].isAlive && count % 5 === 0) {
+        if (gameRuntime.ufo[0].isAlive && count % 5 === 0) {
           // SoundsManager.playSound('ufoHighpitch');
         }
       }
@@ -337,27 +342,28 @@ export const SceneGame = function (session) {
   this.enter = function () {
     Scene.prototype.enter.call(this);
 
+    gameRuntime = createGameRuntime();
     count = 0;
     introElapsedMs = 0;
     gameplayStarted = false;
     masks = null;
 
     controlsCannon = (e) => {
-      if (!gameplayStarted || !ObjectsOnStage.cannon) {
+      if (!gameplayStarted || !gameRuntime.cannon) {
         return;
       }
 
       const key = e.which || e.keyCode;
 
       if (key === 32) {
-        if (arePlayerProjectilesInactive(ObjectsOnStage)) {
-          ObjectsOnStage.cannon.shoot();
+        if (arePlayerProjectilesInactive(gameRuntime)) {
+          gameRuntime.cannon.shoot(gameRuntime);
           SoundsManager.playSound('invaderKilled');
         }
       } else if (key === 37) {
-        ObjectsOnStage.cannon.move(ObjectsOnStage.cannon.x - ObjectsOnStage.cannon.velocity, 0);
+        gameRuntime.cannon.move(gameRuntime.cannon.x - gameRuntime.cannon.velocity, 0);
       } else if (key === 39) {
-        ObjectsOnStage.cannon.move(ObjectsOnStage.cannon.x + ObjectsOnStage.cannon.velocity, 0);
+        gameRuntime.cannon.move(gameRuntime.cannon.x + gameRuntime.cannon.velocity, 0);
       }
     };
 
@@ -392,11 +398,11 @@ export const SceneGame = function (session) {
       return;
     }
 
-    ObjectsOnStage.ufo[0].render();
-    ObjectsOnStage.cannon.render();
-    ObjectsOnStage.renderInvaders();
-    renderPlayerProjectiles(ObjectsOnStage);
-    renderStageEffects(ObjectsOnStage);
+    gameRuntime.ufo[0].render();
+    gameRuntime.cannon.render();
+    renderInvaders(gameRuntime);
+    renderPlayerProjectiles(gameRuntime);
+    renderStageEffects(gameRuntime);
 
     if (!masks.animatedFinished) {
       masks.render();
@@ -408,6 +414,7 @@ export const SceneGame = function (session) {
       window.removeEventListener('keydown', controlsCannon);
       controlsCannon = null;
     }
+    gameRuntime = null;
 
     Scene.prototype.exit.call(this);
   };

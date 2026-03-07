@@ -7,7 +7,6 @@ import { Definitions } from './config.js';
 import { cv, ctx } from './context.js';
 import { ObjectGame } from './game.js';
 import { PixelSprites } from './sprites.js';
-import { ObjectsOnStage } from './stage.js';
 
 const getRandomInt = (min, max) => {
   const start = Math.ceil(min);
@@ -87,9 +86,15 @@ CoreCannon.prototype.move = function (positionX) {
   }
 };
 
-CoreCannon.prototype.shoot = function () {
+CoreCannon.prototype.shoot = function (stageState) {
   const laserCannon = new LaserCannon(this.x + (this.width / 2 - 1), this.y);
-  ObjectsOnStage.laserCannon.push(laserCannon);
+  const targetState = stageState || this.stageState;
+
+  if (!targetState || !targetState.laserCannon) {
+    return;
+  }
+
+  targetState.laserCannon.push(laserCannon);
 };
 
 export const LaserCannon = function (x, y) {

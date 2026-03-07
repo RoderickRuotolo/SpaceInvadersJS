@@ -12,6 +12,7 @@ Modernize the project with **vanilla JavaScript only** (no framework), preservin
 - Main loop migrated to `requestAnimationFrame`.
 - Scene lifecycle implemented (`enter/update/render/exit`) with centralized `ScenesManager`.
 - Gameplay update/render separation completed for projectiles/collision/scoring/effects and validated by smoke test.
+- Runtime state is now explicit in `SceneGame` (`createGameRuntime`) instead of direct `ObjectsOnStage` coupling.
 
 ## What Was Already Modernized
 
@@ -62,6 +63,15 @@ Modernize the project with **vanilla JavaScript only** (no framework), preservin
 - `SceneGame` now calls systems directly in update/render pipeline.
 - `stage.js` now acts mainly as stage object + compatibility wrappers.
 
+### 6) Runtime decoupling (`BREAKING STAGE` item 2)
+- New runtime factory:
+  - `js/runtime-state.js`
+- New invader system module:
+  - `js/systems/invader-system.js`
+- `SceneGame` now owns a local `gameRuntime` and passes it explicitly to systems.
+- `SceneInstructions` no longer uses global stage state for temporary avatars.
+- `CoreCannon.shoot()` now accepts explicit `stageState` (and supports `this.stageState`).
+
 ## Key Files (Current Architecture)
 - Entry: `js/main.js`
 - Scene orchestration: `js/scenes.js`
@@ -77,8 +87,10 @@ Modernize the project with **vanilla JavaScript only** (no framework), preservin
 - No automated tests yet.
 - No package tooling (`package.json`, lint, format, tests) yet.
 
-## Next Recommended Stage (Potentially Breaking)
-Reduce remaining coupling around `ObjectsOnStage` by introducing explicit runtime state object passed to systems/scenes.
+## Next Recommended Stage
+Add tooling and tests:
+- `package.json` + scripts (`test`, `lint`, `format`)
+- minimal unit tests for collision/scoring systems
 
 ## Breaking-Stage Protocol (agreed)
 Before any risky refactor:

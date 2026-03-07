@@ -82,6 +82,10 @@ Modernize the project with **vanilla JavaScript only** (no framework), preservin
 - Added test suite (Vitest):
   - `tests/systems/collision-system.test.js`
   - `tests/systems/scoring-system.test.js`
+  - `tests/systems/projectile-system.test.js`
+  - `tests/systems/effects-system.test.js`
+  - `tests/systems/invader-system.test.js`
+  - `tests/scenes/scenes-manager.test.js`
 - Validation status:
   - `npm run lint` passes
   - `npm run test` passes
@@ -100,6 +104,7 @@ Modernize the project with **vanilla JavaScript only** (no framework), preservin
 - Collision/scoring/effects logic still concentrated in `stage.js`.
 - `stage.js` still exists as compatibility layer and can be removed once no legacy calls remain.
 - Test coverage is minimal and focused on systems only (no scene-flow automation yet).
+- Scene-flow coverage exists at manager transition level, but no DOM/canvas integration tests yet.
 
 ## Next Recommended Stage
 Increase test depth and remove compatibility layer:

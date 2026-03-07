@@ -1,355 +1,542 @@
 /**
  * @author Rodrigo Ruotolo Barbosa <roderickruotolo@gmail.com>
  * Game Scenes
- * @description AllObjects responsible by display scenes from game: 
- * 	ScenesManager
- * 	Scene
- * 	SceneMenu
- * 	SceneInstructions
- * 	SceneGame
- * 	SceneWinner
- * 	SceneLoser
- *
  */
 
-/**
- * Scene Mother
- */
-var Scene = function (Session) {
-    this.sceneName = "";
-    this.session = Session;
-    this.draw = function () {};
+import { cv, ctx } from './context.js';
+import {
+  clearScreen,
+  drawFooter,
+  drawHeader,
+  drawTextMenu,
+  turnThePage,
+  typeWriter,
+} from './draw-functions.js';
+import { createSpaceInvaders, createSpaceInvadersMask } from './factory.js';
+import { CoreCannon, LargeInvader, MediumInvader, SmallInvader, UfoInvader } from './invaders.js';
+import { Menu } from './menu.js';
+import { SoundsManager } from './sounds-manager.js';
+import { resolvePlayerProjectileCollisions } from './systems/collision-system.js';
+import { renderStageEffects, updateStageEffects } from './systems/effects-system.js';
+import { animateInvaders, moveInvadersTroopers, renderInvaders } from './systems/invader-system.js';
+import {
+  arePlayerProjectilesInactive,
+  renderPlayerProjectiles,
+  updatePlayerProjectiles,
+} from './systems/projectile-system.js';
+import { applyCollisionScoring } from './systems/scoring-system.js';
+import { createGameRuntime } from './runtime-state.js';
+
+export const Scene = function (session) {
+  this.sceneName = '';
+  this.session = session;
+  this.isActive = false;
+  this.onNextScene = () => {};
+  this.onSceneChange = () => {};
 };
 
-/**
- * Scene Menu
- */
-var SceneMenu = function (Session) {
-    Scene.call(this, Session);
-    this.sceneName = "sceneMenu";
-    this.draw = function () {        
-        clearScreen(cv, ctx, 
-        	this
-        		.session
-        		.definitions
-        		.backgroundColor);
+Scene.prototype.enter = function () {
+  this.isActive = true;
+};
 
-        drawHeader(ctx, 
-        	this.session.definitions, 
-        	this.session.players[0], 
-        	this.session.players[1], 
-        	this.session.hiScore);
+Scene.prototype.update = function () {};
 
-        drawFooter(ctx, this.session.definitions);
-        drawTextMenu(ctx, this.session.definitions);
-        Menu.drawOnePlayer();
-        //ctx.fillStyle = this.session.definitions.primaryColor;
+Scene.prototype.render = function () {};
+
+Scene.prototype.exit = function () {
+  this.isActive = false;
+};
+
+Scene.prototype.requestNextScene = function () {
+  this.onNextScene();
+};
+
+Scene.prototype.requestSceneChange = function (index) {
+  this.onSceneChange(index);
+};
+
+export const SceneMenu = function (session) {
+  Scene.call(this, session);
+  this.sceneName = 'sceneMenu';
+
+  let initGameListener = null;
+
+  this.enter = function () {
+    Scene.prototype.enter.call(this);
+
+    initGameListener = (e) => {
+      const key = e.which || e.keyCode;
+
+      if (key === 13) {
+        this.requestNextScene();
+      } else if (key === 38 || key === 40) {
+        Menu.altOption();
+      }
     };
+
+    window.addEventListener('keydown', initGameListener);
+  };
+
+  this.render = function () {
+    clearScreen(cv, ctx, this.session.definitions.backgroundColor);
+
+    drawHeader(
+      ctx,
+      this.session.definitions,
+      this.session.players[0],
+      this.session.players[1],
+      this.session.hiScore,
+    );
+
+    drawFooter(ctx, this.session.definitions);
+    drawTextMenu(ctx, this.session.definitions);
+
+    if (Menu.option === 2) {
+      Menu.drawTwoPlayers();
+    } else {
+      Menu.drawOnePlayer();
+    }
+  };
+
+  this.exit = function () {
+    if (initGameListener) {
+      window.removeEventListener('keydown', initGameListener);
+      initGameListener = null;
+    }
+    Scene.prototype.exit.call(this);
+  };
 };
 SceneMenu.prototype = Object.create(Scene.prototype);
 
+export const SceneInstructions = function (session) {
+  Scene.call(this, session);
+  this.sceneName = 'sceneInstructions';
 
-/**
- * @description
- * Scene responsable for show instructions and score rules
- */
-var SceneInstructions = function (Session) {
-    Scene.call(this, Session);
-    this.sceneName = "sceneInstructions";
+  let elapsedMs = 0;
+  let hasRequestedNextScene = false;
+  let instructionAvatars = [];
+  const animationCancels = [];
 
-    this.draw = function () {
+  const trackAnimation = (cancelFn) => {
+    if (typeof cancelFn === 'function') {
+      animationCancels.push(cancelFn);
+    }
+  };
 
-    	var session = this.session;
+  const cancelAnimations = () => {
+    while (animationCancels.length > 0) {
+      const cancel = animationCancels.pop();
+      cancel();
+    }
+  };
 
-        clearScreen(cv, ctx, 
-        	session.definitions.backgroundColor);
-        drawHeader(ctx, 
-        	session.definitions, 
-        	session.players[0], 
-        	session.players[1], 
-        	session.hiScore);
-        drawFooter(ctx, session.definitions);
-        
-        var ufo     = new UfoInvader(cv.width / 3.3, cv.height  / 1.95);
-        var small   = new SmallInvader(cv.width / 3.14, cv.height / 1.79);
-        var medium  = new MediumInvader(cv.width / 3.18, cv.height / 1.63);
-        var large   = new LargeInvader(cv.width / 3.2, cv.height  /  1.47);
+  const drawStaticLayout = () => {
+    clearScreen(cv, ctx, session.definitions.backgroundColor);
+    drawHeader(ctx, session.definitions, session.players[0], session.players[1], session.hiScore);
+    drawFooter(ctx, session.definitions);
 
-        ObjectsOnStage.avatars = new Array(ufo, small, medium, large);
-        ctx.fillText("*SCORE   ADVANCE   TABLE*", cv.width / 3.9, cv.height / 2.1);
+    const ufo = new UfoInvader(cv.width / 3.3, cv.height / 1.95);
+    const small = new SmallInvader(cv.width / 3.14, cv.height / 1.79);
+    const medium = new MediumInvader(cv.width / 3.18, cv.height / 1.63);
+    const large = new LargeInvader(cv.width / 3.2, cv.height / 1.47);
 
-        typeWriter(ctx, session.definitions, "PLAY", cv.width / 2.4, cv.height / 3.3, function() {
-            typeWriter(ctx, session.definitions, "SPACE    INVADERS!", cv.width / 3.1, cv.height / 2.7, function() {
-                for (var i = 0; i < ObjectsOnStage.avatars.length; i++) {
-                    ObjectsOnStage.avatars[i].render();
-                }
-                typeWriter(ctx, session.definitions, "= ? MISTERY", cv.width / 2.5, cv.height / 1.85, function() {
-                    typeWriter(ctx, session.definitions, "= 30 POINTS", cv.width / 2.5, cv.height / 1.7, function() {
-                        typeWriter(ctx, session.definitions, "= 20 POINTS", cv.width / 2.5, cv.height / 1.55, function() {
-                            typeWriter(ctx, session.definitions, "= 10 POINTS", cv.width / 2.5, cv.height / 1.4, function (){ 
-                                turnThePage(ctx, session.definitions, "right");
-                             })
-                        })
-                    })
-                })
-            })
-        });
+    instructionAvatars = [ufo, small, medium, large];
+    ctx.fillText('*SCORE   ADVANCE   TABLE*', cv.width / 3.9, cv.height / 2.1);
+  };
 
-    };
+  const startAnimationSequence = () => {
+    const playCancel = typeWriter(ctx, session.definitions, 'PLAY', cv.width / 2.4, cv.height / 3.3, () => {
+      if (!this.isActive) {
+        return;
+      }
+
+      const titleCancel = typeWriter(
+        ctx,
+        session.definitions,
+        'SPACE    INVADERS!',
+        cv.width / 3.1,
+        cv.height / 2.7,
+        () => {
+          if (!this.isActive) {
+            return;
+          }
+
+          for (let i = 0; i < instructionAvatars.length; i += 1) {
+            instructionAvatars[i].render();
+          }
+
+          const mysteryCancel = typeWriter(
+            ctx,
+            session.definitions,
+            '= ? MISTERY',
+            cv.width / 2.5,
+            cv.height / 1.85,
+            () => {
+              if (!this.isActive) {
+                return;
+              }
+
+              const p30Cancel = typeWriter(
+                ctx,
+                session.definitions,
+                '= 30 POINTS',
+                cv.width / 2.5,
+                cv.height / 1.7,
+                () => {
+                  if (!this.isActive) {
+                    return;
+                  }
+
+                  const p20Cancel = typeWriter(
+                    ctx,
+                    session.definitions,
+                    '= 20 POINTS',
+                    cv.width / 2.5,
+                    cv.height / 1.55,
+                    () => {
+                      if (!this.isActive) {
+                        return;
+                      }
+
+                      const p10Cancel = typeWriter(
+                        ctx,
+                        session.definitions,
+                        '= 10 POINTS',
+                        cv.width / 2.5,
+                        cv.height / 1.4,
+                        () => {
+                          if (!this.isActive) {
+                            return;
+                          }
+
+                          const pageTurnCancel = turnThePage(
+                            ctx,
+                            session.definitions,
+                            'right',
+                            null,
+                          );
+                          trackAnimation(pageTurnCancel);
+                        },
+                      );
+                      trackAnimation(p10Cancel);
+                    },
+                  );
+                  trackAnimation(p20Cancel);
+                },
+              );
+              trackAnimation(p30Cancel);
+            },
+          );
+          trackAnimation(mysteryCancel);
+        },
+      );
+      trackAnimation(titleCancel);
+    });
+
+    trackAnimation(playCancel);
+  };
+
+  this.enter = function () {
+    Scene.prototype.enter.call(this);
+    elapsedMs = 0;
+    hasRequestedNextScene = false;
+    drawStaticLayout();
+    startAnimationSequence();
+  };
+
+  this.update = function (deltaMs) {
+    elapsedMs += deltaMs;
+
+    if (!hasRequestedNextScene && elapsedMs >= 10000) {
+      hasRequestedNextScene = true;
+      this.requestNextScene();
+    }
+  };
+
+  // No per-frame render here. Animation functions render directly.
+  this.render = function () {};
+
+  this.exit = function () {
+    cancelAnimations();
+    instructionAvatars = [];
+    Scene.prototype.exit.call(this);
+  };
 };
 SceneInstructions.prototype = Object.create(Scene.prototype);
 
+export const SceneGame = function (session) {
+  Scene.call(this, session);
+  this.sceneName = 'sceneGame';
 
+  const timeScene = 14;
+  const introDelayMs = 2000;
+  let gameRuntime = null;
+  let count = 0;
+  let introElapsedMs = 0;
+  let gameplayStarted = false;
+  let masks = null;
+  let controlsCannon = null;
 
-/**
- * Scene Default Run Game
- */
-var SceneGame = function (Session) {
-    Scene.call(this, Session);
-    this.sceneName = "sceneGame"; 
-    
-    //var timeScene = 7;    
-    var timeScene = 14;
-    var count = 0;
-    var start = null;
-    
+  const initializeGameplay = () => {
+    gameRuntime.stageIsOver = false;
 
-    this.draw = function () {
+    const ufo1 = new UfoInvader(50, 90);
+    gameRuntime.ufo = [ufo1];
+    gameRuntime.cannon = new CoreCannon(50, 580);
+    gameRuntime.cannon.stageState = gameRuntime;
+    gameRuntime.alienInvaders = createSpaceInvaders();
+    gameRuntime.laserCannon = [];
+    gameRuntime.shotEffects = [];
+    gameRuntime.scorePopups = [];
 
-        var parent = this;
+    masks = createSpaceInvadersMask(gameRuntime.alienInvaders);
+    masks.create();
 
-        clearScreen(cv, 
-        	ctx, 
-        	parent.session.definitions.backgroundColor);
-        //ctx.font = parent.session.definitions.fontProperties;
-        drawHeader(ctx, 
-        	parent.session.definitions, 
-	        parent.session.players[0], 
-	        parent.session.players[1], 
-	        parent.session.hiScore);
-        drawFooter(ctx, 
-        	parent.session.definitions);
-        ctx.fillText("PLAY  PLAYER <1>", cv.width / 3, cv.height / 2.1); 
+    gameplayStarted = true;
+  };
 
-        window.setTimeout(function () {
-            
-            clearScreen(cv, 
-            	ctx, 
-            	parent.session.definitions.backgroundColor);
-            drawHeader(ctx, 
-            	parent.session.definitions, 
-            	parent.session.players[0], 
-            	parent.session.players[1], 
-            	parent.session.hiScore);
-            drawFooter(ctx, 
-            	parent.session.definitions);
+  const updateGameplayState = () => {
+    const toggle = count % timeScene === 0;
 
-            ObjectsOnStage.stageIsOver = false;
+    if (gameRuntime.ufo[0].x > cv.width + 100 || gameRuntime.ufo[0].x < -100) {
+      gameRuntime.ufo[0].direction *= -1;
+    }
 
-            //ObjectsOnStage
-            ufo1 = new UfoInvader(50, 90);
-            ObjectsOnStage.ufo = [ufo1];
-            ObjectsOnStage.cannon = new CoreCannon(50, 580);
-            ObjectsOnStage.alienInvaders = createSpaceInvaders();
-            ObjectsOnStage.laserCannon = new Array();
-            
-            // Fake rendering 
-            masks = new SpaceInvadersMask(ObjectsOnStage.alienInvaders);
-            masks.create();
+    gameRuntime.ufo[0].move(gameRuntime.ufo[0].velocity, 0);
+    animateInvaders(gameRuntime, count % 10 === 0);
+    updatePlayerProjectiles(gameRuntime);
+    const collisionEvents = resolvePlayerProjectileCollisions(gameRuntime);
+    applyCollisionScoring(this.session, gameRuntime, collisionEvents);
+    updateStageEffects(gameRuntime);
 
-            window.setInterval(function() {
+    if (masks.animatedFinished) {
+      if (count % 2 === 0) {
+        moveInvadersTroopers(gameRuntime, 8, 8);
+      }
 
-                clearScreen(cv, 
-                	ctx, 
-                	parent.session.definitions.backgroundColor);
-                drawHeader(ctx, 
-                	parent.session.definitions, 
-                	parent.session.players[0], 
-                	parent.session.players[1], 
-                	parent.session.hiScore);
-                drawFooter(ctx, parent.session.definitions);
+      if (count % 2 === 0) {
+        if (toggle) {
+          // SoundsManager.playSoundTrack();
+        }
+        if (gameRuntime.ufo[0].isAlive && count % 5 === 0) {
+          // SoundsManager.playSound('ufoHighpitch');
+        }
+      }
+    }
 
-                var toogle = (count % timeScene == 0);
-                
-                
-                // ufo movement
-                if (ObjectsOnStage.ufo[0].x > cv.width + 100 || 
-                	ObjectsOnStage.ufo[0].x < -100) {
-                    	ObjectsOnStage.ufo[0].direction *= -1;
-                } // ufo move and render
-                ObjectsOnStage.ufo[0].move(ObjectsOnStage.ufo[0].velocity, 0);
-                ObjectsOnStage.ufo[0].render();
+    if (!masks.animatedFinished) {
+      masks.step(2);
+    }
 
+    if (count > 6000) {
+      count = 0;
+    }
 
-                ObjectsOnStage.cannon.render();                
-                
-                // render all aliens invaders from game
-                ObjectsOnStage.renderInvaders();
+    if (count > 500) {
+      console.log('agora o jogo começou');
+    }
 
-                // verifica colisões do lazer atirado pelo jogador
-                ObjectsOnStage.verifyCannonShoot(parent.session);
+    count += 1;
+  };
 
-                ObjectsOnStage.animateInvaders(count % 10 == 0);
+  this.enter = function () {
+    Scene.prototype.enter.call(this);
 
-                // Efeito para simular renzerização dos invasores finalizado!
-                if (masks.animatedFinished) {
-                    if (count % 2 == 0) {
-                        ObjectsOnStage.moveInvadersTroopers(8, 8);
-                    }
-                    // Music and UFOs sound
-                    if (count % 2 == 0) {
-                        if (toogle) {
-                            //SoundsManager.playSoundTrack();
-                        }
-                        if (ObjectsOnStage.ufo[0].isAlive && (count % 5 == 0)) {
-                            //SoundsManager.playSound('ufoHighpitch');                        
-                        }
-                    }
-                } else {
-                    // Efeito para simular renderização dos invasores...
-                    masks.run();
-                }
+    gameRuntime = createGameRuntime();
+    count = 0;
+    introElapsedMs = 0;
+    gameplayStarted = false;
+    masks = null;
 
-                if (count > 6000) {
-                    count = 0;
-                }
+    controlsCannon = (e) => {
+      if (!gameplayStarted || !gameRuntime.cannon) {
+        return;
+      }
 
-                if (count > 500) {
-                    console.log("agora o jogo começou");
-                }
+      const key = e.which || e.keyCode;
 
-                count++;
-
-            }, 60);
-            
-            var controlsCannon = function (e) {
-                var key = e.which || e.keyCode;
-
-                // shoot
-                if (key === 32) { // 32 space
-                    // atira apenas um lazer por vez
-                    if ( ObjectsOnStage.lasersAreDead() ) {
-                        ObjectsOnStage.cannon.shoot();
-                        SoundsManager.playSound('invaderKilled');
-                    }
-                // move left
-                } else if (key === 37) {
-                    ObjectsOnStage.cannon.move(ObjectsOnStage.cannon.x - ObjectsOnStage.cannon.velocity, 0);
-                // move right
-                } else if (key === 39) {
-                    ObjectsOnStage.cannon.move(ObjectsOnStage.cannon.x + ObjectsOnStage.cannon.velocity, 0);
-                }
-            };
-
-            window.addEventListener("keydown", controlsCannon);
-            if (ObjectsOnStage.stageIsOver) {            
-                window.removeEventListener("keydown", controlsCannon);
-            }
-
-            
-
-        }, 2000);
-
-
+      if (key === 32) {
+        if (arePlayerProjectilesInactive(gameRuntime)) {
+          gameRuntime.cannon.shoot(gameRuntime);
+          SoundsManager.playSound('invaderKilled');
+        }
+      } else if (key === 37) {
+        gameRuntime.cannon.move(gameRuntime.cannon.x - gameRuntime.cannon.velocity, 0);
+      } else if (key === 39) {
+        gameRuntime.cannon.move(gameRuntime.cannon.x + gameRuntime.cannon.velocity, 0);
+      }
     };
+
+    window.addEventListener('keydown', controlsCannon);
+  };
+
+  this.update = function (deltaMs) {
+    if (!gameplayStarted) {
+      introElapsedMs += deltaMs;
+      if (introElapsedMs >= introDelayMs) {
+        initializeGameplay();
+      }
+      return;
+    }
+
+    updateGameplayState();
+  };
+
+  this.render = function () {
+    clearScreen(cv, ctx, this.session.definitions.backgroundColor);
+    drawHeader(
+      ctx,
+      this.session.definitions,
+      this.session.players[0],
+      this.session.players[1],
+      this.session.hiScore,
+    );
+    drawFooter(ctx, this.session.definitions);
+
+    if (!gameplayStarted) {
+      ctx.fillText('PLAY  PLAYER <1>', cv.width / 3, cv.height / 2.1);
+      return;
+    }
+
+    gameRuntime.ufo[0].render();
+    gameRuntime.cannon.render();
+    renderInvaders(gameRuntime);
+    renderPlayerProjectiles(gameRuntime);
+    renderStageEffects(gameRuntime);
+
+    if (!masks.animatedFinished) {
+      masks.render();
+    }
+  };
+
+  this.exit = function () {
+    if (controlsCannon) {
+      window.removeEventListener('keydown', controlsCannon);
+      controlsCannon = null;
+    }
+    gameRuntime = null;
+
+    Scene.prototype.exit.call(this);
+  };
 };
 SceneGame.prototype = Object.create(Scene.prototype);
 
+export const SceneWinner = function (session) {
+  Scene.call(this, session);
+  this.sceneName = 'sceneWinner';
 
-
-/**
- * Scene Winner
- */
-var SceneWinner = function (Session) {
-    Scene.call(this, Session);
-    this.sceneName = "sceneWinner"; 
-    this.draw = function () {
-        clearScreen(cv, ctx, this.session.definitions.backgroundColor);
-        ctx.font = this.session.definitions.fontProperties;
-        ctx.fillText("Thanks for Playing!", 10, 50);
-    };
+  this.render = function () {
+    clearScreen(cv, ctx, this.session.definitions.backgroundColor);
+    ctx.font = this.session.definitions.fontProperties;
+    ctx.fillText('Thanks for Playing!', 10, 50);
+  };
 };
 SceneWinner.prototype = Object.create(Scene.prototype);
 
+export const SceneLoser = function (session) {
+  Scene.call(this, session);
+  this.sceneName = 'sceneLoser';
 
-
-/**
- * Scene Loser
- */
-var SceneLoser = function (Session) {
-    Scene.call(this, Session);
-    this.sceneName = "sceneLoser"; 
-    this.draw = function () {
-        clearScreen(cv, ctx, this.session.definitions.backgroundColor);
-        ctx.font = this.session.definitions.fontProperties;
-        ctx.fillText("You Lose!",10,50);
-    };
+  this.render = function () {
+    clearScreen(cv, ctx, this.session.definitions.backgroundColor);
+    ctx.font = this.session.definitions.fontProperties;
+    ctx.fillText('You Lose!', 10, 50);
+  };
 };
 SceneLoser.prototype = Object.create(Scene.prototype);
 
+export const ScenesManager = function (gameScenes) {
+  this.currentScene = 0;
+  this.won = false;
+  this.gameScenes = gameScenes;
 
+  this.activeScene = null;
+  this.animationFrameId = null;
+  this.loopStepMs = 60;
+  this.lastTimestamp = 0;
+  this.accumulatedMs = 0;
 
-/**
- * Scenes Manager
- * @param GameScenes Scene[]
- */
-var ScenesManager = function (GameScenes) {
-    this.currentScene = 0;
-    this.won = false;
-    this.gameScenes = GameScenes;
-    this.nextScene = function () {
-        if (this.currentScene == 2 && this.won) {
-            this.currentScene = 3;
-            this.gameScenes[3];
-        } else if (this.currentScene == 2 && !this.won) {
-            this.currentScene = 3;
-            this.gameScenes[3];
-        } else {
-            this.currentScene++;
-            this.gameScenes[this.currentScene];
-            console.log("Cena atual: " + this.currentScene + " " + new Date());
-        }
-    },
-    this.run = function () {
-        var parent = this;
-        //this.gameScenes[this.currentScene].objectsInStage = this.objectsInStage;
-        this.gameScenes[this.currentScene].draw();
+  const configureSceneCallbacks = (scene) => {
+    scene.onNextScene = () => {
+      this.nextScene();
+    };
 
-        // Aqui iniciamos o menu e setaremos o objeto this.session.definitions 
-        // dependendo das escolhas do usuário 
-        if (this.gameScenes[this.currentScene].sceneName == "sceneMenu") {
+    scene.onSceneChange = (index) => {
+      this.changeScene(index);
+    };
+  };
 
-            var initGame = function (e) {
-                var key = e.which || e.keyCode;
+  for (let i = 0; i < this.gameScenes.length; i += 1) {
+    configureSceneCallbacks(this.gameScenes[i]);
+  }
 
-                if (key === 13) { // 13 is enter key
-                    // code for enter
-                    parent.nextScene();
-                    window.removeEventListener("keydown", initGame);
-                    parent.run();
-                } else if (key === 38 || key === 40) {
-                    Menu.altOption();
-                }
-            };
-            window.addEventListener("keydown", initGame);
-
-        // Aqui roda a cena de preparação onde são mostradas as pontuações básicas
-        } else if (this.gameScenes[this.currentScene].sceneName == "sceneInstructions") {
-            
-            window.setTimeout(function () {
-                console.log("Terminada cena de preparação "  + new Date());
-                parent.nextScene();
-                parent.run();
-            }, 10000);
-
-        // Aqui a lógica do jogo, criação e 
-        // comportamento dos objetos relativos aos personagens, 
-        // dificuldade e tals
-        } else if (this.gameScenes[this.currentScene].sceneName == "sceneGame") {
-            
-            
-            //console.log(ObjectsOnStage);
-
-        }
+  this.changeScene = function (sceneIndex) {
+    if (sceneIndex < 0 || sceneIndex >= this.gameScenes.length) {
+      return;
     }
+
+    if (this.activeScene) {
+      this.activeScene.exit();
+    }
+
+    this.currentScene = sceneIndex;
+    this.activeScene = this.gameScenes[this.currentScene];
+    this.activeScene.enter();
+
+    console.log(`Cena atual: ${this.currentScene} ${new Date()}`);
+  };
+
+  this.nextScene = function () {
+    if (this.currentScene === 2) {
+      this.changeScene(this.won ? 3 : 4);
+      return;
+    }
+
+    this.changeScene(this.currentScene + 1);
+  };
+
+  this.loop = (timestamp) => {
+    if (this.lastTimestamp === 0) {
+      this.lastTimestamp = timestamp;
+    }
+
+    const deltaMs = timestamp - this.lastTimestamp;
+    this.lastTimestamp = timestamp;
+    this.accumulatedMs += deltaMs;
+
+    while (this.accumulatedMs >= this.loopStepMs) {
+      if (this.activeScene) {
+        this.activeScene.update(this.loopStepMs);
+        this.activeScene.render();
+      }
+      this.accumulatedMs -= this.loopStepMs;
+    }
+
+    this.animationFrameId = window.requestAnimationFrame(this.loop);
+  };
+
+  this.run = function () {
+    this.lastTimestamp = 0;
+    this.accumulatedMs = 0;
+
+    if (this.animationFrameId !== null) {
+      window.cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+
+    this.changeScene(0);
+    this.animationFrameId = window.requestAnimationFrame(this.loop);
+  };
+
+  this.stop = function () {
+    if (this.animationFrameId !== null) {
+      window.cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+
+    if (this.activeScene) {
+      this.activeScene.exit();
+      this.activeScene = null;
+    }
+  };
 };

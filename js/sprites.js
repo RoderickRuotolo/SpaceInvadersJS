@@ -1,4 +1,4 @@
-var PixelSprites= {
+export const PixelSprites = {
 	Squid:[
 		[0,0,0,0,0,0,0,0,0,0],
 		[0,0,0,0,1,1,0,0,0,0],

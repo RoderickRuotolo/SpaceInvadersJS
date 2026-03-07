@@ -17,6 +17,14 @@ import { CoreCannon, LargeInvader, MediumInvader, SmallInvader, UfoInvader } fro
 import { Menu } from './menu.js';
 import { SoundsManager } from './sounds-manager.js';
 import { ObjectsOnStage } from './stage.js';
+import { resolvePlayerProjectileCollisions } from './systems/collision-system.js';
+import { renderStageEffects, updateStageEffects } from './systems/effects-system.js';
+import {
+  arePlayerProjectilesInactive,
+  renderPlayerProjectiles,
+  updatePlayerProjectiles,
+} from './systems/projectile-system.js';
+import { applyCollisionScoring } from './systems/scoring-system.js';
 
 export const Scene = function (session) {
   this.sceneName = '';
@@ -291,8 +299,10 @@ export const SceneGame = function (session) {
 
     ObjectsOnStage.ufo[0].move(ObjectsOnStage.ufo[0].velocity, 0);
     ObjectsOnStage.animateInvaders(count % 10 === 0);
-    ObjectsOnStage.updateCannonShoot(this.session);
-    ObjectsOnStage.updateEffects();
+    updatePlayerProjectiles(ObjectsOnStage);
+    const collisionEvents = resolvePlayerProjectileCollisions(ObjectsOnStage);
+    applyCollisionScoring(this.session, ObjectsOnStage, collisionEvents);
+    updateStageEffects(ObjectsOnStage);
 
     if (masks.animatedFinished) {
       if (count % 2 === 0) {
@@ -340,7 +350,7 @@ export const SceneGame = function (session) {
       const key = e.which || e.keyCode;
 
       if (key === 32) {
-        if (ObjectsOnStage.lasersAreDead()) {
+        if (arePlayerProjectilesInactive(ObjectsOnStage)) {
           ObjectsOnStage.cannon.shoot();
           SoundsManager.playSound('invaderKilled');
         }
@@ -385,8 +395,8 @@ export const SceneGame = function (session) {
     ObjectsOnStage.ufo[0].render();
     ObjectsOnStage.cannon.render();
     ObjectsOnStage.renderInvaders();
-    ObjectsOnStage.renderLaserCannon();
-    ObjectsOnStage.renderEffects();
+    renderPlayerProjectiles(ObjectsOnStage);
+    renderStageEffects(ObjectsOnStage);
 
     if (!masks.animatedFinished) {
       masks.render();

@@ -2,9 +2,15 @@
  * @author Rodrigo Ruotolo <roderickruotolo@gmail.com>
  */
 
-import { cv, ctx } from './context.js';
-import { drawEllipseByCenter } from './draw-functions.js';
-import { SoundsManager } from './sounds-manager.js';
+import { cv } from './context.js';
+import {
+  arePlayerProjectilesInactive,
+  renderPlayerProjectiles,
+  updatePlayerProjectiles,
+} from './systems/projectile-system.js';
+import { resolvePlayerProjectileCollisions } from './systems/collision-system.js';
+import { applyCollisionScoring } from './systems/scoring-system.js';
+import { renderStageEffects, updateStageEffects } from './systems/effects-system.js';
 
 export const ObjectsOnStage = { currentLineInvaders: 4, directionInvaders: 1 };
 
@@ -28,87 +34,23 @@ ObjectsOnStage.renderInvaders = function () {
   }
 };
 
+// Compatibility wrappers while systems are extracted
 ObjectsOnStage.moveLaserCannon = function () {
-  if (this.laserCannon.length > 0) {
-    for (let i = 0; i < this.laserCannon.length; i += 1) {
-      this.laserCannon[i].move();
-    }
-  }
+  updatePlayerProjectiles(this);
 };
 
 ObjectsOnStage.renderLaserCannon = function () {
-  if (this.laserCannon.length > 0) {
-    for (let i = 0; i < this.laserCannon.length; i += 1) {
-      if (this.laserCannon[i].isAlive === 1) {
-        this.laserCannon[i].render();
-      }
-    }
-  }
+  renderPlayerProjectiles(this);
 };
 
 ObjectsOnStage.lasersAreDead = function () {
-  if (this.laserCannon.length > 0) {
-    for (let i = 0; i < this.laserCannon.length; i += 1) {
-      if (this.laserCannon[i].isAlive) {
-        return false;
-      }
-    }
-  }
-  return true;
+  return arePlayerProjectilesInactive(this);
 };
 
 ObjectsOnStage.updateCannonShoot = function (session) {
-  if (!this.shotEffects) {
-    this.shotEffects = [];
-  }
-  if (!this.scorePopups) {
-    this.scorePopups = [];
-  }
-
-  if (this.laserCannon.length > 0) {
-    for (let i = 0; i < this.laserCannon.length; i += 1) {
-      if (this.laserCannon[i].isAlive === 1) {
-        this.laserCannon[i].move();
-
-        if (this.laserCannon[i].y < 0) {
-          this.shotEffects.push({ x: this.laserCannon[i].x, y: 3, w: 20, h: 10, life: 3 });
-          this.laserCannon[i].isAlive = 0;
-        }
-
-        for (let j = 0; j < this.alienInvaders.length; j += 1) {
-          for (let k = 0; k < this.alienInvaders[j].length; k += 1) {
-            if (this.laserCannon[i].isAlive === 1 && this.alienInvaders[j][k].isAlive === 1) {
-              if (this.laserCannon[i].collisionWasDetected(this.alienInvaders[j][k])) {
-                this.alienInvaders[j][k].currentMap = 2;
-                this.alienInvaders[j][k].isAlive = 0;
-                this.laserCannon[i].isAlive = 0;
-                SoundsManager.playSound('shoot');
-                session.players[0].score += this.alienInvaders[j][k].points;
-              }
-            }
-          }
-        }
-
-        for (let u = 0; u < this.ufo.length; u += 1) {
-          if (this.laserCannon[i].isAlive === 1 && this.ufo[u].isAlive === 1) {
-            if (this.laserCannon[i].collisionWasDetected(this.ufo[u])) {
-              this.ufo[u].currentMap = 2;
-              this.ufo[u].isAlive = 0;
-              this.laserCannon[i].isAlive = 0;
-              this.scorePopups.push({
-                text: String(this.ufo[u].points),
-                x: this.ufo[u].x + this.ufo[u].width * 0.3,
-                y: this.ufo[u].y + this.ufo[u].height * 1.05,
-                life: 15,
-              });
-              session.players[0].score += this.ufo[u].points;
-              SoundsManager.playSound('ufoLowpitch');
-            }
-          }
-        }
-      }
-    }
-  }
+  updatePlayerProjectiles(this);
+  const events = resolvePlayerProjectileCollisions(this);
+  applyCollisionScoring(session, this, events);
 };
 
 ObjectsOnStage.verifyCannonShoot = function (session) {
@@ -116,44 +58,11 @@ ObjectsOnStage.verifyCannonShoot = function (session) {
 };
 
 ObjectsOnStage.updateEffects = function () {
-  if (!this.shotEffects) {
-    this.shotEffects = [];
-  }
-  if (!this.scorePopups) {
-    this.scorePopups = [];
-  }
-
-  for (let i = this.shotEffects.length - 1; i >= 0; i -= 1) {
-    this.shotEffects[i].life -= 1;
-    if (this.shotEffects[i].life <= 0) {
-      this.shotEffects.splice(i, 1);
-    }
-  }
-
-  for (let i = this.scorePopups.length - 1; i >= 0; i -= 1) {
-    this.scorePopups[i].life -= 1;
-    this.scorePopups[i].y -= 0.8;
-    if (this.scorePopups[i].life <= 0) {
-      this.scorePopups.splice(i, 1);
-    }
-  }
+  updateStageEffects(this);
 };
 
 ObjectsOnStage.renderEffects = function () {
-  if (this.shotEffects && this.shotEffects.length > 0) {
-    ctx.fillStyle = '#ffffff';
-    for (let i = 0; i < this.shotEffects.length; i += 1) {
-      const effect = this.shotEffects[i];
-      drawEllipseByCenter(ctx, effect.x, effect.y, effect.w, effect.h);
-    }
-  }
-
-  if (this.scorePopups && this.scorePopups.length > 0) {
-    for (let i = 0; i < this.scorePopups.length; i += 1) {
-      const popup = this.scorePopups[i];
-      ctx.fillText(popup.text, popup.x, popup.y);
-    }
-  }
+  renderStageEffects(this);
 };
 
 ObjectsOnStage.moveInvadersTroopers = function (x, y) {

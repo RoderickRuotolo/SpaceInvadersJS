@@ -11,7 +11,7 @@ Modernize the project with **vanilla JavaScript only** (no framework), preservin
 - App running in browser with ES Modules.
 - Main loop migrated to `requestAnimationFrame`.
 - Scene lifecycle implemented (`enter/update/render/exit`) with centralized `ScenesManager`.
-- Gameplay update/render separation partially completed and validated.
+- Gameplay update/render separation completed for projectiles/collision/scoring/effects and validated by smoke test.
 
 ## What Was Already Modernized
 
@@ -43,7 +43,7 @@ Modernize the project with **vanilla JavaScript only** (no framework), preservin
   - runs a central fixed-step loop
   - assigns callbacks (`onNextScene`, `onSceneChange`)
 
-### 4) Update/render split (in progress but stable)
+### 4) Update/render split (implemented)
 - `LaserCannon.move()` and `LaserInvaders.move()` now only update position (no draw side effects).
 - `ObjectsOnStage` gained:
   - `updateCannonShoot(session)`
@@ -52,6 +52,15 @@ Modernize the project with **vanilla JavaScript only** (no framework), preservin
   - `renderEffects()`
 - `verifyCannonShoot(session)` kept as compatibility alias to `updateCannonShoot(session)`.
 - Mask object gained `step(removalsPerTick)` and still supports legacy `run()`.
+
+### 5) Systems extraction (`BREAKING STAGE` item 1)
+- New systems folder:
+  - `js/systems/projectile-system.js`
+  - `js/systems/collision-system.js`
+  - `js/systems/scoring-system.js`
+  - `js/systems/effects-system.js`
+- `SceneGame` now calls systems directly in update/render pipeline.
+- `stage.js` now acts mainly as stage object + compatibility wrappers.
 
 ## Key Files (Current Architecture)
 - Entry: `js/main.js`
@@ -69,12 +78,7 @@ Modernize the project with **vanilla JavaScript only** (no framework), preservin
 - No package tooling (`package.json`, lint, format, tests) yet.
 
 ## Next Recommended Stage (Potentially Breaking)
-Extract gameplay systems from `stage.js` into dedicated modules, e.g.:
-- `js/systems/collision-system.js`
-- `js/systems/scoring-system.js`
-- `js/systems/projectile-system.js`
-
-Then adapt `SceneGame.update/render` to call systems explicitly.
+Reduce remaining coupling around `ObjectsOnStage` by introducing explicit runtime state object passed to systems/scenes.
 
 ## Breaking-Stage Protocol (agreed)
 Before any risky refactor:
@@ -98,4 +102,3 @@ Before any risky refactor:
 - Laser collision with aliens updates score.
 - UFO hit updates score and popup appears.
 - No duplicated shot rendering artifacts.
-

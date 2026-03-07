@@ -97,7 +97,7 @@ export const typeWriter = (context, config, text, x, y, callback) => {
     if (isCancelled) {
       return;
     }
-    if (callback != null) {
+    if (callback !== null && callback !== undefined) {
       callback();
     }
   };
@@ -174,7 +174,7 @@ export const turnThePage = (context, config, direction, callback) => {
     if (isCancelled) {
       return;
     }
-    if (callback != null) {
+    if (callback !== null && callback !== undefined) {
       callback();
     }
   };
@@ -234,7 +234,6 @@ export const turnThePage = (context, config, direction, callback) => {
 };
 
 if (!String.prototype.padStart) {
-  // eslint-disable-next-line no-extend-native
   String.prototype.padStart = function padStart(targetLength, padString) {
     targetLength >>= 0;
     padString = String(typeof padString !== 'undefined' ? padString : ' ');

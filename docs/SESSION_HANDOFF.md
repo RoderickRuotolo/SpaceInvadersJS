@@ -72,6 +72,20 @@ Modernize the project with **vanilla JavaScript only** (no framework), preservin
 - `SceneInstructions` no longer uses global stage state for temporary avatars.
 - `CoreCannon.shoot()` now accepts explicit `stageState` (and supports `this.stageState`).
 
+### 7) Tooling and tests (`non-breaking`)
+- Added Node tooling:
+  - `package.json` (`type: module`, scripts for `lint`, `test`, `format`)
+  - `eslint.config.js`
+  - `.prettierrc.json`
+  - `.prettierignore`
+  - `.gitignore` (`node_modules`, `coverage`)
+- Added test suite (Vitest):
+  - `tests/systems/collision-system.test.js`
+  - `tests/systems/scoring-system.test.js`
+- Validation status:
+  - `npm run lint` passes
+  - `npm run test` passes
+
 ## Key Files (Current Architecture)
 - Entry: `js/main.js`
 - Scene orchestration: `js/scenes.js`
@@ -84,13 +98,14 @@ Modernize the project with **vanilla JavaScript only** (no framework), preservin
 ## Known Technical Debt
 - `ObjectsOnStage` still central/global-like state and heavily coupled.
 - Collision/scoring/effects logic still concentrated in `stage.js`.
-- No automated tests yet.
-- No package tooling (`package.json`, lint, format, tests) yet.
+- `stage.js` still exists as compatibility layer and can be removed once no legacy calls remain.
+- Test coverage is minimal and focused on systems only (no scene-flow automation yet).
 
 ## Next Recommended Stage
-Add tooling and tests:
-- `package.json` + scripts (`test`, `lint`, `format`)
-- minimal unit tests for collision/scoring systems
+Increase test depth and remove compatibility layer:
+- add tests for projectile/effects/invader systems
+- add scene transition smoke tests
+- remove or slim `stage.js` compatibility wrappers once confirmed unused
 
 ## Breaking-Stage Protocol (agreed)
 Before any risky refactor:

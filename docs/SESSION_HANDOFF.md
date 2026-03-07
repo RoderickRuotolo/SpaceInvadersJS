@@ -13,6 +13,7 @@ Modernize the project with **vanilla JavaScript only** (no framework), preservin
 - Scene lifecycle implemented (`enter/update/render/exit`) with centralized `ScenesManager`.
 - Gameplay update/render separation completed for projectiles/collision/scoring/effects and validated by smoke test.
 - Runtime state is now explicit in `SceneGame` (`createGameRuntime`) instead of direct `ObjectsOnStage` coupling.
+- Legacy `stage.js` compatibility layer removed.
 
 ## What Was Already Modernized
 
@@ -71,6 +72,7 @@ Modernize the project with **vanilla JavaScript only** (no framework), preservin
 - `SceneGame` now owns a local `gameRuntime` and passes it explicitly to systems.
 - `SceneInstructions` no longer uses global stage state for temporary avatars.
 - `CoreCannon.shoot()` now accepts explicit `stageState` (and supports `this.stageState`).
+- `js/stage.js` removed (no remaining imports/usages).
 
 ### 7) Tooling and tests (`non-breaking`)
 - Added Node tooling:
@@ -93,24 +95,22 @@ Modernize the project with **vanilla JavaScript only** (no framework), preservin
 ## Key Files (Current Architecture)
 - Entry: `js/main.js`
 - Scene orchestration: `js/scenes.js`
-- Stage state/systems (still coupled): `js/stage.js`
+- Runtime factory: `js/runtime-state.js`
+- Gameplay systems: `js/systems/*.js`
 - Entities: `js/invaders.js`, `js/game.js`
 - Drawing helpers/animations: `js/draw-functions.js`
 - Factories/spawn/mask: `js/factory.js`
 - Session/config/context: `js/session.js`, `js/config.js`, `js/context.js`
 
 ## Known Technical Debt
-- `ObjectsOnStage` still central/global-like state and heavily coupled.
-- Collision/scoring/effects logic still concentrated in `stage.js`.
-- `stage.js` still exists as compatibility layer and can be removed once no legacy calls remain.
+- Some gameplay behavior still relies on mutable shared runtime object patterns.
 - Test coverage is minimal and focused on systems only (no scene-flow automation yet).
 - Scene-flow coverage exists at manager transition level, but no DOM/canvas integration tests yet.
 
 ## Next Recommended Stage
-Increase test depth and remove compatibility layer:
-- add tests for projectile/effects/invader systems
-- add scene transition smoke tests
-- remove or slim `stage.js` compatibility wrappers once confirmed unused
+1. Add CI workflow (`lint` + `test`) on push/PR.
+2. Add lightweight integration tests around `SceneGame` runtime initialization.
+3. Reduce debug logs or gate them behind a debug flag.
 
 ## Breaking-Stage Protocol (agreed)
 Before any risky refactor:

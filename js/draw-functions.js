@@ -108,7 +108,7 @@ export const typeWriter = (context, config, text, x, y, callback) => {
     counter += 1;
 
     if (counter >= total) {
-      console.log(`String digitada, animação finalizada! ${new Date()}`);
+      console.log(`Text animation completed! ${new Date()}`);
       return true;
     }
     return false;
@@ -187,7 +187,7 @@ export const turnThePage = (context, config, direction, callback) => {
       return true;
     }
     if (direction === 'right' && count > cv.width - 60) {
-      console.log(`Página virada ${new Date()}`);
+      console.log(`Page turned ${new Date()}`);
       return true;
     }
     count += velocity;

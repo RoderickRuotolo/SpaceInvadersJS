@@ -1,12 +1,22 @@
 # SpaceInvadersJS - Session Handoff
 
-Last update: 2026-03-07
+Last update: 2026-11-07
 Project path: `/home/roderick/Projetos/javascript/SpaceInvadersJS`
 
 ## Goal
 Modernize the project with **vanilla JavaScript only** (no framework), preserving gameplay behavior.
 
 ## Current Status
+- Roadmap phase 1, task 1 completed: `outcome-system.js` detects victory when all
+  standard invaders are dead, defeat at the cannon's top edge, or lives <= 0.
+  `SceneGame` reports its result through `requestNextScene(won)` to `ScenesManager`.
+  Outcomes are checked before and after gameplay updates, with listener cleanup on exit.
+- SceneGame integration tests cover intro, final-shot scoring, outcome routing,
+  boundary crossing, zero lives, and removal of controls. Manual browser playthrough pending.
+- Result scenes explicitly restore the foreground color after clearing the canvas;
+  regression tests cover visible win/lose text after manager transitions.
+- Next gameplay task: player damage/lives, together with alien shooting as needed.
+- Local startup uses `npm start`; SoundJS 0.6.2 is vendored in `vendor/soundjs/`.
 - Smoke tests passed by user after each major step.
 - App running in browser with ES Modules.
 - Main loop migrated to `requestAnimationFrame`.

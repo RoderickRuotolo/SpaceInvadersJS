@@ -14,12 +14,13 @@ export const SoundsManager = {
     invaderKilled: 'invaderkilled.wav',
   },
   loadSounds() {
+    if (!globalThis.createjs?.Sound) return;
     for (const soundId in this.sounds) {
       createjs.Sound.registerSound(`sounds/${this.sounds[soundId]}`, soundId);
     }
   },
   playSound(soundId) {
-    createjs.Sound.play(soundId);
+    globalThis.createjs?.Sound?.play(soundId);
   },
   backgroundSounds: ['fastInvader4', 'fastInvader1', 'fastInvader2', 'fastInvader3'],
   currentSoundTrack: 0,

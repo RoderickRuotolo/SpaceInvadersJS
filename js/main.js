@@ -47,6 +47,7 @@ const initSpaceInvaders = () => {
 
   const scenesManager = new ScenesManager(gameScenes);
   scenesManager.run();
+  document.getElementById('startup-message')?.remove();
 };
 
 window.addEventListener('load', () => {

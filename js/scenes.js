@@ -26,6 +26,7 @@ import {
 } from './systems/projectile-system.js';
 import { applyCollisionScoring } from './systems/scoring-system.js';
 import { createGameRuntime } from './runtime-state.js';
+import { getGameOutcome } from './systems/outcome-system.js';
 
 export const Scene = function (session) {
   this.sceneName = '';
@@ -47,8 +48,8 @@ Scene.prototype.exit = function () {
   this.isActive = false;
 };
 
-Scene.prototype.requestNextScene = function () {
-  this.onNextScene();
+Scene.prototype.requestNextScene = function (won) {
+  this.onNextScene(won);
 };
 
 Scene.prototype.requestSceneChange = function (index) {
@@ -85,7 +86,7 @@ export const SceneMenu = function (session) {
       this.session.definitions,
       this.session.players[0],
       this.session.players[1],
-      this.session.hiScore,
+      this.session.hiScore
     );
 
     drawFooter(ctx, this.session.definitions);
@@ -145,93 +146,100 @@ export const SceneInstructions = function (session) {
   };
 
   const startAnimationSequence = () => {
-    const playCancel = typeWriter(ctx, session.definitions, 'PLAY', cv.width / 2.4, cv.height / 3.3, () => {
-      if (!this.isActive) {
-        return;
-      }
+    const playCancel = typeWriter(
+      ctx,
+      session.definitions,
+      'PLAY',
+      cv.width / 2.4,
+      cv.height / 3.3,
+      () => {
+        if (!this.isActive) {
+          return;
+        }
 
-      const titleCancel = typeWriter(
-        ctx,
-        session.definitions,
-        'SPACE    INVADERS!',
-        cv.width / 3.1,
-        cv.height / 2.7,
-        () => {
-          if (!this.isActive) {
-            return;
-          }
+        const titleCancel = typeWriter(
+          ctx,
+          session.definitions,
+          'SPACE    INVADERS!',
+          cv.width / 3.1,
+          cv.height / 2.7,
+          () => {
+            if (!this.isActive) {
+              return;
+            }
 
-          for (let i = 0; i < instructionAvatars.length; i += 1) {
-            instructionAvatars[i].render();
-          }
+            for (let i = 0; i < instructionAvatars.length; i += 1) {
+              instructionAvatars[i].render();
+            }
 
-          const mysteryCancel = typeWriter(
-            ctx,
-            session.definitions,
-            '= ? MISTERY',
-            cv.width / 2.5,
-            cv.height / 1.85,
-            () => {
-              if (!this.isActive) {
-                return;
-              }
+            const mysteryCancel = typeWriter(
+              ctx,
+              session.definitions,
+              '= ? MYSTERY',
+              cv.width / 2.5,
+              cv.height / 1.85,
+              () => {
+                if (!this.isActive) {
+                  return;
+                }
 
-              const p30Cancel = typeWriter(
-                ctx,
-                session.definitions,
-                '= 30 POINTS',
-                cv.width / 2.5,
-                cv.height / 1.7,
-                () => {
-                  if (!this.isActive) {
-                    return;
-                  }
+                const p30Cancel = typeWriter(
+                  ctx,
+                  session.definitions,
+                  '= 30 POINTS',
+                  cv.width / 2.5,
+                  cv.height / 1.7,
+                  () => {
+                    if (!this.isActive) {
+                      return;
+                    }
 
-                  const p20Cancel = typeWriter(
-                    ctx,
-                    session.definitions,
-                    '= 20 POINTS',
-                    cv.width / 2.5,
-                    cv.height / 1.55,
-                    () => {
-                      if (!this.isActive) {
-                        return;
-                      }
+                    const p20Cancel = typeWriter(
+                      ctx,
+                      session.definitions,
+                      '= 20 POINTS',
+                      cv.width / 2.5,
+                      cv.height / 1.55,
+                      () => {
+                        if (!this.isActive) {
+                          return;
+                        }
 
-                      const p10Cancel = typeWriter(
-                        ctx,
-                        session.definitions,
-                        '= 10 POINTS',
-                        cv.width / 2.5,
-                        cv.height / 1.4,
-                        () => {
-                          if (!this.isActive) {
-                            return;
+                        const p10Cancel = typeWriter(
+                          ctx,
+                          session.definitions,
+                          '= 10 POINTS',
+                          cv.width / 2.5,
+                          cv.height / 1.4,
+                          () => {
+                            if (!this.isActive) {
+                              return;
+                            }
+
+                            const pageTurnCancel = turnThePage(
+                              ctx,
+                              session.definitions,
+                              'right',
+                              null
+                            );
+                            trackAnimation(pageTurnCancel);
                           }
-
-                          const pageTurnCancel = turnThePage(
-                            ctx,
-                            session.definitions,
-                            'right',
-                            null,
-                          );
-                          trackAnimation(pageTurnCancel);
-                        },
-                      );
-                      trackAnimation(p10Cancel);
-                    },
-                  );
-                  trackAnimation(p20Cancel);
-                },
-              );
-              trackAnimation(p30Cancel);
-            },
-          );
-          trackAnimation(mysteryCancel);
-        },
-      );
-      trackAnimation(titleCancel);
-    });
+                        );
+                        trackAnimation(p10Cancel);
+                      }
+                    );
+                    trackAnimation(p20Cancel);
+                  }
+                );
+                trackAnimation(p30Cancel);
+              }
+            );
+            trackAnimation(mysteryCancel);
+          }
+        );
+        trackAnimation(titleCancel);
+      }
+    );
 
     trackAnimation(playCancel);
   };
@@ -276,6 +284,16 @@ export const SceneGame = function (session) {
   let gameplayStarted = false;
   let masks = null;
   let controlsCannon = null;
+
+  const finishIfOver = () => {
+    const outcome = getGameOutcome(gameRuntime, this.session.players[0]);
+    if (!outcome) return false;
+
+    gameRuntime.stageIsOver = true;
+    this.session.players[0].won = outcome === 'won';
+    this.requestNextScene(outcome === 'won');
+    return true;
+  };
 
   const initializeGameplay = () => {
     gameRuntime.stageIsOver = false;
@@ -333,7 +351,7 @@ export const SceneGame = function (session) {
     }
 
     if (count > 500) {
-      console.log('agora o jogo começou');
+      console.log('Gameplay started');
     }
 
     count += 1;
@@ -347,9 +365,10 @@ export const SceneGame = function (session) {
     introElapsedMs = 0;
     gameplayStarted = false;
     masks = null;
+    this.session.players[0].won = false;
 
     controlsCannon = (e) => {
-      if (!gameplayStarted || !gameRuntime.cannon) {
+      if (!this.isActive || !gameplayStarted || !gameRuntime?.cannon || gameRuntime.stageIsOver) {
         return;
       }
 
@@ -371,6 +390,8 @@ export const SceneGame = function (session) {
   };
 
   this.update = function (deltaMs) {
+    if (!this.isActive || gameRuntime.stageIsOver) return;
+
     if (!gameplayStarted) {
       introElapsedMs += deltaMs;
       if (introElapsedMs >= introDelayMs) {
@@ -379,7 +400,9 @@ export const SceneGame = function (session) {
       return;
     }
 
+    if (finishIfOver()) return;
     updateGameplayState();
+    finishIfOver();
   };
 
   this.render = function () {
@@ -389,7 +412,7 @@ export const SceneGame = function (session) {
       this.session.definitions,
       this.session.players[0],
       this.session.players[1],
-      this.session.hiScore,
+      this.session.hiScore
     );
     drawFooter(ctx, this.session.definitions);
 
@@ -428,7 +451,8 @@ export const SceneWinner = function (session) {
   this.render = function () {
     clearScreen(cv, ctx, this.session.definitions.backgroundColor);
     ctx.font = this.session.definitions.fontProperties;
-    ctx.fillText('Thanks for Playing!', 10, 50);
+    ctx.fillStyle = this.session.definitions.primaryColor;
+    ctx.fillText('You Win! Thanks for Playing!', 10, 50);
   };
 };
 SceneWinner.prototype = Object.create(Scene.prototype);
@@ -440,6 +464,7 @@ export const SceneLoser = function (session) {
   this.render = function () {
     clearScreen(cv, ctx, this.session.definitions.backgroundColor);
     ctx.font = this.session.definitions.fontProperties;
+    ctx.fillStyle = this.session.definitions.primaryColor;
     ctx.fillText('You Lose!', 10, 50);
   };
 };
@@ -457,8 +482,8 @@ export const ScenesManager = function (gameScenes) {
   this.accumulatedMs = 0;
 
   const configureSceneCallbacks = (scene) => {
-    scene.onNextScene = () => {
-      this.nextScene();
+    scene.onNextScene = (won) => {
+      this.nextScene(won);
     };
 
     scene.onSceneChange = (index) => {
@@ -483,11 +508,13 @@ export const ScenesManager = function (gameScenes) {
     this.activeScene = this.gameScenes[this.currentScene];
     this.activeScene.enter();
 
-    console.log(`Cena atual: ${this.currentScene} ${new Date()}`);
+    console.log(`Current scene: ${this.currentScene} ${new Date()}`);
   };
 
-  this.nextScene = function () {
+  // SceneGame supplies its result; other scenes request a sequential transition.
+  this.nextScene = function (won) {
     if (this.currentScene === 2) {
+      if (typeof won === 'boolean') this.won = won;
       this.changeScene(this.won ? 3 : 4);
       return;
     }

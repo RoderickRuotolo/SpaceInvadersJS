@@ -13,7 +13,7 @@ export const createPlayer = () => ({
   isAlive: true,
   lives: 4,
   killed() {
-    this.lives -= 1;
+    this.lives = Math.max(0, this.lives - 1);
 
     if (this.lives === 0) {
       this.isAlive = false;

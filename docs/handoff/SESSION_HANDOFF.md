@@ -15,7 +15,14 @@ Modernize the project with **vanilla JavaScript only** (no framework), preservin
   boundary crossing, zero lives, and removal of controls. Manual browser playthrough pending.
 - Result scenes explicitly restore the foreground color after clearing the canvas;
   regression tests cover visible win/lose text after manager transitions.
-- Next gameplay task: player damage/lives, together with alien shooting as needed.
+- Roadmap phase 1, tasks 2 and 3 implemented: alien shooting, player damage,
+  death/respawn, temporary invulnerability, and lives HUD. Systems are in
+  `alien-shooting-system.js` and `player-damage-system.js` with explicit runtime state.
+  Hits freeze gameplay for 900 ms, clear shots, and respawn survivors with 1200 ms
+  of blinking protection. Enemy shots start after the reveal, every 900 ms, max 3.
+- Tests cover simultaneous hits, controls during death, respawn immunity, last-life
+  defeat, shooting limits, cleanup, rendering and HUD. Browser playthrough pending.
+- Next gameplay task: destructible barriers/shelters (phase 1, task 4).
 - Local startup uses `npm start`; SoundJS 0.6.2 is vendored in `vendor/soundjs/`.
 - Smoke tests passed by user after each major step.
 - App running in browser with ES Modules.

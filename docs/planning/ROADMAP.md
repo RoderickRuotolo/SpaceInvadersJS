@@ -25,19 +25,27 @@ Goal: make single-player gameplay rules complete and finishable.
 
 Implemented in `outcome-system.js`: living invaders reaching the cannon's top edge
 cause defeat regardless of horizontal position; the bonus UFO does not prevent victory.
-Zero lives takes precedence over victory. Enemy damage/lives depletion remains in task 2.
+Zero lives takes precedence over victory.
 
 ### 2. Player Damage and Lives
-- [ ] Implement player hit detection (alien laser -> player).
-- [ ] Implement player death feedback (short animation or hit state).
-- [ ] Disable controls while resolving death/respawn.
-- [ ] Keep HUD score/lives synchronized with session player state.
+- [x] Implement player hit detection (alien laser -> player).
+- [x] Implement player death feedback (short animation or hit state).
+- [x] Disable controls while resolving death/respawn.
+- [x] Keep HUD score/lives synchronized with session player state.
+
+Hits remove one life and clear both projectile pools. Gameplay pauses for a 900 ms
+explosion; surviving players respawn at x=50 with 1200 ms of blinking protection.
+The last-life explosion finishes before the defeat screen appears.
 
 ### 3. Alien Shooting System
-- [ ] Activate alien projectile spawning (prefer bottom-most alive invaders).
-- [ ] Limit simultaneous alien projectiles.
-- [ ] Update/render alien projectiles in the main game update/render cycle.
-- [ ] Remove off-screen alien projectiles safely.
+- [x] Activate alien projectile spawning (prefer bottom-most alive invaders).
+- [x] Limit simultaneous alien projectiles.
+- [x] Update/render alien projectiles in the main game update/render cycle.
+- [x] Remove off-screen alien projectiles safely.
+
+Shooting starts after the formation reveal: one shot every 900 ms, up to three
+active shots, selected from the lowest living invaders in each column. Shot speed
+is 6 pixels per fixed update. Manual browser playthrough and difficulty tuning pending.
 
 ### 4. Barriers/Shelters
 - [ ] Add barrier entities to stage initialization.
@@ -65,7 +73,7 @@ Goal: ensure clean resets and deterministic progression.
 ### 3. Integration-Oriented Tests
 - [x] Add tests for `SceneGame` outcome transitions (win/lose).
 - [ ] Add tests for gameplay reset behavior.
-- [ ] Add tests for lives decrement and game-over trigger.
+- [x] Add tests for lives decrement and game-over trigger.
 
 Completion criteria:
 - [ ] Game can be played repeatedly without stale state bugs.

@@ -33,7 +33,12 @@ Invader.prototype.alternateMap = function (statusToggle) {
 export const SmallInvader = function (x, y) {
   ObjectGame.call(this, x, y);
   this.points = 30;
-  this.maps = [PixelSprites.Squid, PixelSprites.Squid2, PixelSprites.AlienExplosion, PixelSprites.Dead];
+  this.maps = [
+    PixelSprites.Squid,
+    PixelSprites.Squid2,
+    PixelSprites.AlienExplosion,
+    PixelSprites.Dead,
+  ];
   this.width = Definitions.pixelSize * this.maps[0][0].length;
   this.height = Definitions.pixelSize * this.maps[0].length;
 };
@@ -42,7 +47,12 @@ SmallInvader.prototype = Object.create(Invader.prototype);
 export const MediumInvader = function (x, y) {
   ObjectGame.call(this, x, y);
   this.points = 20;
-  this.maps = [PixelSprites.Crab, PixelSprites.Crab2, PixelSprites.AlienExplosion, PixelSprites.Dead];
+  this.maps = [
+    PixelSprites.Crab,
+    PixelSprites.Crab2,
+    PixelSprites.AlienExplosion,
+    PixelSprites.Dead,
+  ];
   this.width = Definitions.pixelSize * this.maps[0][0].length;
   this.height = Definitions.pixelSize * this.maps[0].length;
 };
@@ -51,7 +61,12 @@ MediumInvader.prototype = Object.create(Invader.prototype);
 export const LargeInvader = function (x, y) {
   ObjectGame.call(this, x, y);
   this.points = 10;
-  this.maps = [PixelSprites.Jellyfish, PixelSprites.Jellyfish2, PixelSprites.AlienExplosion, PixelSprites.Dead];
+  this.maps = [
+    PixelSprites.Jellyfish,
+    PixelSprites.Jellyfish2,
+    PixelSprites.AlienExplosion,
+    PixelSprites.Dead,
+  ];
   this.width = Definitions.pixelSize * this.maps[0][0].length;
   this.height = Definitions.pixelSize * this.maps[0].length;
 };
@@ -72,7 +87,12 @@ export const CoreCannon = function (x, y) {
   Invader.call(this, x, y);
   this.color = Definitions.secondaryColor;
   this.velocity = 8;
-  this.maps = [PixelSprites.Cannon, PixelSprites.Cannon, PixelSprites.AlienExplosion, PixelSprites.Dead];
+  this.maps = [
+    PixelSprites.Cannon,
+    PixelSprites.Cannon,
+    PixelSprites.CannonExplosion,
+    PixelSprites.Dead,
+  ];
   this.width = Definitions.pixelSize * this.maps[0][0].length;
   this.height = Definitions.pixelSize * this.maps[0].length;
 };

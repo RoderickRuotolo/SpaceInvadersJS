@@ -27,6 +27,8 @@ import {
 import { applyCollisionScoring } from './systems/scoring-system.js';
 import { createGameRuntime } from './runtime-state.js';
 import { getGameOutcome } from './systems/outcome-system.js';
+import { renderAlienProjectiles, updateAlienProjectiles } from './systems/alien-shooting-system.js';
+import { resolvePlayerDamage, updatePlayerRecovery } from './systems/player-damage-system.js';
 
 export const Scene = function (session) {
   this.sceneName = '';
@@ -313,7 +315,7 @@ export const SceneGame = function (session) {
     gameplayStarted = true;
   };
 
-  const updateGameplayState = () => {
+  const updateGameplayState = (deltaMs) => {
     const toggle = count % timeScene === 0;
 
     if (gameRuntime.ufo[0].x > cv.width + 100 || gameRuntime.ufo[0].x < -100) {
@@ -328,6 +330,7 @@ export const SceneGame = function (session) {
     updateStageEffects(gameRuntime);
 
     if (masks.animatedFinished) {
+      updateAlienProjectiles(gameRuntime, deltaMs, cv.height);
       if (count % 2 === 0) {
         moveInvadersTroopers(gameRuntime, 8, 8);
       }
@@ -368,7 +371,13 @@ export const SceneGame = function (session) {
     this.session.players[0].won = false;
 
     controlsCannon = (e) => {
-      if (!this.isActive || !gameplayStarted || !gameRuntime?.cannon || gameRuntime.stageIsOver) {
+      if (
+        !this.isActive ||
+        !gameplayStarted ||
+        !gameRuntime?.cannon ||
+        gameRuntime.stageIsOver ||
+        gameRuntime.playerDeathRemainingMs > 0
+      ) {
         return;
       }
 
@@ -400,8 +409,15 @@ export const SceneGame = function (session) {
       return;
     }
 
+    const recovering = gameRuntime.playerDeathRemainingMs > 0;
+    updatePlayerRecovery(gameRuntime, this.session.players[0], deltaMs);
+    if (recovering) {
+      if (gameRuntime.playerDeathRemainingMs === 0) finishIfOver();
+      return;
+    }
     if (finishIfOver()) return;
-    updateGameplayState();
+    updateGameplayState(deltaMs);
+    if (resolvePlayerDamage(gameRuntime, this.session.players[0])) return;
     finishIfOver();
   };
 
@@ -422,9 +438,17 @@ export const SceneGame = function (session) {
     }
 
     gameRuntime.ufo[0].render();
-    gameRuntime.cannon.render();
+    ctx.fillStyle = this.session.definitions.primaryColor;
+    ctx.fillText(`LIVES ${this.session.players[0].lives}`, 20, 670);
+    if (
+      gameRuntime.playerInvulnerableMs === 0 ||
+      Math.floor(gameRuntime.playerInvulnerableMs / 120) % 2 === 0
+    ) {
+      gameRuntime.cannon.render();
+    }
     renderInvaders(gameRuntime);
     renderPlayerProjectiles(gameRuntime);
+    renderAlienProjectiles(gameRuntime);
     renderStageEffects(gameRuntime);
 
     if (!masks.animatedFinished) {

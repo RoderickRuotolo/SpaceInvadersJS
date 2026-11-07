@@ -57,8 +57,7 @@ export const drawHeader = (context, config, player1, player2, hiScore) => {
   context.fillText(hiScore, 340, 60);
 
   context.fillText('SCORE<2>', 600, 30);
-  context.fillText(score.padStart(4, '0'), 625, 60);
-  void player2;
+  context.fillText(String(player2.score).padStart(4, '0'), 625, 60);
 };
 
 /**

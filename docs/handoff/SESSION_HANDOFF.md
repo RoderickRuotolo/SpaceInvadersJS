@@ -45,7 +45,19 @@ Modernize the project with **vanilla JavaScript only** (no framework), preservin
 - Routine debug logs removed. Optional transition diagnostics use
   `new ScenesManager(gameScenes, { debug: true })`. Navigation contract is documented
   in `docs/SCENE_TRANSITIONS.md`; regression tests cover guards and loop stopping.
-- Next implementation stage: alternating two-player mode (phase 3).
+- Phase 3 implemented: menu selection configures `playerCount`, with explicit
+  `activePlayerIndex`, per-player `turnFinished`, and session `matchIsOver`.
+  Session helpers select the active player, complete turns and compare scores.
+- Turns switch after stage clearance or game-over, never on a nonfatal hit. The
+  last-life explosion completes before player 2 receives a fresh runtime and
+  two-second start prompt. SceneGame remains active with one control listener.
+- Damage, recovery, scoring and lives HUD use the active player. Both result scenes
+  show multiplayer scores and a highlighted score-based winner/tie. New matches
+  reset both players and turn state; either player's points update the shared record.
+- Tests cover all four turn outcomes, score/lives isolation, final-life switching,
+  fresh runtimes, winner/tie rendering, multiplayer restarts and switching to solo.
+  Manual browser playthrough remains pending.
+- Next implementation stage: CI automation, followed by gameplay polish (phase 4).
 - Local startup uses `npm start`; SoundJS 0.6.2 is vendored in `vendor/soundjs/`.
 - Smoke tests passed by user after each major step.
 - App running in browser with ES Modules.

@@ -105,22 +105,36 @@ Manual browser playthrough remains pending.
 Goal: implement classic alternating turns (not simultaneous).
 
 ### 1. Player Session Model
-- [ ] Use menu selection (`1` vs `2` players) to configure session flow.
-- [ ] Track score/lives independently for player 1 and player 2.
-- [ ] Define active player index and turn lifecycle.
+- [x] Use menu selection (`1` vs `2` players) to configure session flow.
+- [x] Track score/lives independently for player 1 and player 2.
+- [x] Define active player index and turn lifecycle.
 
 ### 2. Turn Switching
-- [ ] After player 1 game-over, reset gameplay state for player 2.
-- [ ] Show transition messaging (e.g., `PLAYER 2 START`).
-- [ ] Continue until both players complete turns.
+- [x] After player 1 game-over, reset gameplay state for player 2.
+- [x] Show transition messaging (e.g., `PLAYER 2 START`).
+- [x] Continue until both players complete turns.
+
+Each turn lasts until stage clearance or game-over, including invasion. A nonfatal
+hit retains the current player. The final-life explosion finishes before switching.
+The next player receives a new runtime and a two-second start message; instructions
+are shown only once per match. Controls and the fixed-step scene loop stay intact.
 
 ### 3. Results Screen
-- [ ] Display both player scores.
-- [ ] Highlight winner or tie.
-- [ ] Allow restart to menu/new match.
+- [x] Display both player scores.
+- [x] Highlight winner or tie.
+- [x] Allow restart to menu/new match.
+
+Multiplayer standings compare scores regardless of stage outcomes. Both existing
+result scenes render the same score table and highlighted winner/tie. The shared
+record includes both players; starting a new match resets both players and turn
+completion flags while retaining that record for the current page session.
 
 Completion criteria:
-- [ ] Two players can complete alternating matches end-to-end.
+- [x] Two players can complete alternating matches end-to-end.
+
+Automated coverage includes all four win/lose combinations, score and lives
+isolation, player-2 scoring, fresh stages, protected respawn, ties, repeated
+two-player matches, and switching back to single-player mode. Browser smoke pending.
 
 ## Phase 4 — Quality, Tooling, and Polish
 Goal: improve maintainability and player experience.

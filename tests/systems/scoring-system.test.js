@@ -49,4 +49,21 @@ describe('applyCollisionScoring', () => {
     applyCollisionScoring(session, state, [{ type: 'alienHit', points: 10 }]);
     expect(session.hiScore).toBe(5170);
   });
+
+  it('awards both kinds of hits and the record to player 2 while preserving player 1', () => {
+    const session = {
+      players: [{ score: 4000 }, { score: 4990 }],
+      activePlayerIndex: 1,
+      hiScore: 5000,
+    };
+    const state = { scorePopups: [] };
+    applyCollisionScoring(session, state, [
+      { type: 'alienHit', points: 30 },
+      { type: 'ufoHit', points: 150, textX: 0, textY: 0 },
+    ]);
+    expect(session.players[0].score).toBe(4000);
+    expect(session.players[1].score).toBe(5170);
+    expect(session.hiScore).toBe(5170);
+    expect(state.scorePopups[0].text).toBe('150');
+  });
 });

@@ -11,6 +11,18 @@ The scene list supplied by `main.js` uses these indices:
 | 3 | Winner | `requestSceneChange(0)` returns to the menu. |
 | 4 | Loser | `requestSceneChange(0)` returns to the menu. |
 
+In two-player mode, `SceneGame` stays active between turns. `finishPlayerTurn`
+records the first player's outcome and advances `activePlayerIndex`; an internal
+turn initializer creates a fresh runtime and repeats the two-second start message
+for player 2. The existing controls remain attached once and ignore input during
+the start message. No same-scene manager transition is requested.
+
+Only the final player's completed turn requests a result scene using the table
+above. Both result scenes show the same multiplayer standings, based on scores;
+`manager.won` still reflects the final turn's stage outcome rather than the match
+standings. Single-player navigation is unchanged. Starting from the menu calls
+`resetMatch(session, Menu.option)` and resets the active index and completion flags.
+
 ## Lifecycle and requests
 
 - Each destination must provide `enter`, `exit`, `update` and `render` functions

@@ -1,4 +1,5 @@
 import { SoundsManager } from '../sounds-manager.js';
+import { getActivePlayer } from '../session.js';
 
 const ensurePopupState = (stageState) => {
   if (!stageState.scorePopups) {
@@ -8,17 +9,18 @@ const ensurePopupState = (stageState) => {
 
 export const applyCollisionScoring = (session, stageState, collisionEvents) => {
   ensurePopupState(stageState);
+  const player = getActivePlayer(session);
 
   for (let i = 0; i < collisionEvents.length; i += 1) {
     const event = collisionEvents[i];
 
     if (event.type === 'alienHit') {
-      session.players[0].score += event.points;
+      player.score += event.points;
       SoundsManager.playSound('shoot');
     }
 
     if (event.type === 'ufoHit') {
-      session.players[0].score += event.points;
+      player.score += event.points;
       stageState.scorePopups.push({
         text: String(event.points),
         x: event.textX,
@@ -27,6 +29,6 @@ export const applyCollisionScoring = (session, stageState, collisionEvents) => {
       });
       SoundsManager.playSound('ufoLowpitch');
     }
-    session.hiScore = Math.max(session.hiScore, session.players[0].score);
+    session.hiScore = Math.max(session.hiScore, player.score);
   }
 };

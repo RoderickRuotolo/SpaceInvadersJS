@@ -37,6 +37,17 @@ New matches reset both players' scores and lives and recreate all gameplay objec
 including barriers. The high score is retained between matches while the page is
 open; reloading the page resets it to the initial value of 5000.
 
+## Two-player mode
+
+Select **2 PLAYERS** in the menu. Players share the same controls and take complete
+turns in order: player 1 plays until losing the game or clearing the formation,
+then player 2 starts with four lives and a fresh stage. Losing a single life does
+not switch players. A start message and the lives display identify the active player.
+
+After both turns, the results screen shows both scores and highlights the player
+with the higher score, or a tie. The shared high score tracks points from either
+player. Press Enter to return to the menu and start another match in either mode.
+
 ## Docs
 - Documentation index: `docs/README.md`
 - Session handoff: `docs/handoff/SESSION_HANDOFF.md`

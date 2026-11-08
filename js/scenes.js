@@ -27,7 +27,7 @@ import {
 import { applyCollisionScoring } from './systems/scoring-system.js';
 import { createGameRuntime } from './runtime-state.js';
 import { getGameOutcome } from './systems/outcome-system.js';
-import { resetMatch } from './session.js';
+import { finishPlayerTurn, getActivePlayer, getMatchWinner, resetMatch } from './session.js';
 import { renderAlienProjectiles, updateAlienProjectiles } from './systems/alien-shooting-system.js';
 import { resolvePlayerDamage, updatePlayerRecovery } from './systems/player-damage-system.js';
 import {
@@ -79,7 +79,7 @@ export const SceneMenu = function (session) {
       const key = e.which || e.keyCode;
 
       if (key === 13) {
-        resetMatch(this.session);
+        resetMatch(this.session, Menu.option);
         this.requestNextScene();
       } else if (key === 38 || key === 40) {
         Menu.altOption();
@@ -296,12 +296,24 @@ export const SceneGame = function (session) {
   let masks = null;
   let controlsCannon = null;
 
+  const startTurn = () => {
+    gameRuntime = createGameRuntime();
+    count = 0;
+    introElapsedMs = 0;
+    gameplayStarted = false;
+    masks = null;
+    getActivePlayer(this.session).won = false;
+  };
+
   const finishIfOver = () => {
-    const outcome = getGameOutcome(gameRuntime, this.session.players[0]);
+    const outcome = getGameOutcome(gameRuntime, getActivePlayer(this.session));
     if (!outcome) return false;
 
     gameRuntime.stageIsOver = true;
-    this.session.players[0].won = outcome === 'won';
+    if (finishPlayerTurn(this.session, outcome === 'won')) {
+      startTurn();
+      return true;
+    }
     this.requestNextScene(outcome === 'won');
     return true;
   };
@@ -372,12 +384,7 @@ export const SceneGame = function (session) {
   this.enter = function () {
     Scene.prototype.enter.call(this);
 
-    gameRuntime = createGameRuntime();
-    count = 0;
-    introElapsedMs = 0;
-    gameplayStarted = false;
-    masks = null;
-    this.session.players[0].won = false;
+    startTurn();
 
     controlsCannon = (e) => {
       if (
@@ -419,14 +426,14 @@ export const SceneGame = function (session) {
     }
 
     const recovering = gameRuntime.playerDeathRemainingMs > 0;
-    updatePlayerRecovery(gameRuntime, this.session.players[0], deltaMs);
+    updatePlayerRecovery(gameRuntime, getActivePlayer(this.session), deltaMs);
     if (recovering) {
       if (gameRuntime.playerDeathRemainingMs === 0) finishIfOver();
       return;
     }
     if (finishIfOver()) return;
     updateGameplayState(deltaMs);
-    if (resolvePlayerDamage(gameRuntime, this.session.players[0])) return;
+    if (resolvePlayerDamage(gameRuntime, getActivePlayer(this.session))) return;
     finishIfOver();
   };
 
@@ -442,13 +449,20 @@ export const SceneGame = function (session) {
     drawFooter(ctx, this.session.definitions);
 
     if (!gameplayStarted) {
-      ctx.fillText('PLAY  PLAYER <1>', cv.width / 3, cv.height / 2.1);
+      ctx.fillText(
+        `PLAYER ${this.session.activePlayerIndex + 1} START`,
+        cv.width / 3,
+        cv.height / 2.1
+      );
       return;
     }
 
     gameRuntime.ufo[0].render();
     ctx.fillStyle = this.session.definitions.primaryColor;
-    ctx.fillText(`LIVES ${this.session.players[0].lives}`, 20, 670);
+    ctx.fillText(`LIVES ${getActivePlayer(this.session).lives}`, 20, 670);
+    if (this.session.playerCount === 2) {
+      ctx.fillText(`PLAYER <${this.session.activePlayerIndex + 1}>`, 230, 670);
+    }
     if (
       gameRuntime.playerInvulnerableMs === 0 ||
       Math.floor(gameRuntime.playerInvulnerableMs / 120) % 2 === 0
@@ -496,6 +510,17 @@ const configureResultNavigation = (scene) => {
 };
 
 const drawResultDetails = (session) => {
+  if (session.playerCount === 2) {
+    ctx.fillText(`PLAYER 1 SCORE ${session.players[0].score}`, 10, 100);
+    ctx.fillText(`PLAYER 2 SCORE ${session.players[1].score}`, 10, 150);
+    const winner = getMatchWinner(session);
+    ctx.fillStyle = session.definitions.secondaryColor;
+    ctx.fillText(winner === null ? 'TIE GAME!' : `PLAYER ${winner + 1} WINS!`, 10, 210);
+    ctx.fillStyle = session.definitions.primaryColor;
+    ctx.fillText(`HI-SCORE ${session.hiScore}`, 10, 260);
+    ctx.fillText('Press ENTER to return to the menu', 10, 330);
+    return;
+  }
   ctx.fillText(`SCORE ${session.players[0].score}`, 10, 100);
   ctx.fillText(`HI-SCORE ${session.hiScore}`, 10, 150);
   ctx.fillText('Press ENTER to return to the menu', 10, 220);
@@ -510,7 +535,11 @@ export const SceneWinner = function (session) {
     clearScreen(cv, ctx, this.session.definitions.backgroundColor);
     ctx.font = this.session.definitions.fontProperties;
     ctx.fillStyle = this.session.definitions.primaryColor;
-    ctx.fillText('You Win! Thanks for Playing!', 10, 50);
+    ctx.fillText(
+      this.session.playerCount === 2 ? 'MATCH RESULTS' : 'You Win! Thanks for Playing!',
+      10,
+      50
+    );
     drawResultDetails(this.session);
   };
 };
@@ -525,7 +554,7 @@ export const SceneLoser = function (session) {
     clearScreen(cv, ctx, this.session.definitions.backgroundColor);
     ctx.font = this.session.definitions.fontProperties;
     ctx.fillStyle = this.session.definitions.primaryColor;
-    ctx.fillText('You Lose!', 10, 50);
+    ctx.fillText(this.session.playerCount === 2 ? 'MATCH RESULTS' : 'You Lose!', 10, 50);
     drawResultDetails(this.session);
   };
 };

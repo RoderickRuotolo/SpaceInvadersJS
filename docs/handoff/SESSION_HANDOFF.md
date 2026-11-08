@@ -22,7 +22,14 @@ Modernize the project with **vanilla JavaScript only** (no framework), preservin
   of blinking protection. Enemy shots start after the reveal, every 900 ms, max 3.
 - Tests cover simultaneous hits, controls during death, respawn immunity, last-life
   defeat, shooting limits, cleanup, rendering and HUD. Browser playthrough pending.
-- Next gameplay task: destructible barriers/shelters (phase 1, task 4).
+- Roadmap phase 1, task 4 implemented in `barrier-system.js`: four shelters made of
+  destructible 6x6 segments. Swept shot collisions prevent tunneling; shots from
+  either side destroy the first intact segment and stop without awarding points.
+  Living invaders crush overlapping segments. Barriers render in the secondary color.
+- Barrier damage persists through respawn and resets on gameplay initialization.
+  Unit and SceneGame tests cover erosion, holes, shot priority, visibility, enemy
+  impacts, and fresh-match barriers. Manual browser playthrough pending.
+- Next gameplay task: clean match resets and return-to-menu flow (phase 2).
 - Local startup uses `npm start`; SoundJS 0.6.2 is vendored in `vendor/soundjs/`.
 - Smoke tests passed by user after each major step.
 - App running in browser with ES Modules.

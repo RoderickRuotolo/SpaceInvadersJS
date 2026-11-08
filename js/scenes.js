@@ -29,6 +29,12 @@ import { createGameRuntime } from './runtime-state.js';
 import { getGameOutcome } from './systems/outcome-system.js';
 import { renderAlienProjectiles, updateAlienProjectiles } from './systems/alien-shooting-system.js';
 import { resolvePlayerDamage, updatePlayerRecovery } from './systems/player-damage-system.js';
+import {
+  createBarriers,
+  crushBarriers,
+  renderBarriers,
+  resolveBarrierCollisions,
+} from './systems/barrier-system.js';
 
 export const Scene = function (session) {
   this.sceneName = '';
@@ -305,6 +311,7 @@ export const SceneGame = function (session) {
     gameRuntime.cannon = new CoreCannon(50, 580);
     gameRuntime.cannon.stageState = gameRuntime;
     gameRuntime.alienInvaders = createSpaceInvaders();
+    gameRuntime.barriers = createBarriers(cv.width);
     gameRuntime.laserCannon = [];
     gameRuntime.shotEffects = [];
     gameRuntime.scorePopups = [];
@@ -325,6 +332,7 @@ export const SceneGame = function (session) {
     gameRuntime.ufo[0].move(gameRuntime.ufo[0].velocity, 0);
     animateInvaders(gameRuntime, count % 10 === 0);
     updatePlayerProjectiles(gameRuntime);
+    resolveBarrierCollisions(gameRuntime, gameRuntime.laserCannon, -1);
     const collisionEvents = resolvePlayerProjectileCollisions(gameRuntime);
     applyCollisionScoring(this.session, gameRuntime, collisionEvents);
     updateStageEffects(gameRuntime);
@@ -334,6 +342,8 @@ export const SceneGame = function (session) {
       if (count % 2 === 0) {
         moveInvadersTroopers(gameRuntime, 8, 8);
       }
+      crushBarriers(gameRuntime);
+      resolveBarrierCollisions(gameRuntime, gameRuntime.laserInvaders, 1);
 
       if (count % 2 === 0) {
         if (toggle) {
@@ -447,6 +457,7 @@ export const SceneGame = function (session) {
       gameRuntime.cannon.render();
     }
     renderInvaders(gameRuntime);
+    renderBarriers(gameRuntime, ctx, this.session.definitions.secondaryColor);
     renderPlayerProjectiles(gameRuntime);
     renderAlienProjectiles(gameRuntime);
     renderStageEffects(gameRuntime);

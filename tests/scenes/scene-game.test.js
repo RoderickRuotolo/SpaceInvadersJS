@@ -49,6 +49,59 @@ describe('SceneGame outcomes', () => {
     for (const invader of runtime.alienInvaders.flat()) invader.isAlive = 0;
   };
 
+  it('blocks a player shot before it can score against an invader behind the barrier', () => {
+    game.update(2000);
+    const invader = runtime.alienInvaders[0][0];
+    invader.y = 470;
+    runtime.barriers = [{ segments: [{ x: 100, y: 500, width: 6, height: 6, isAlive: true }] }];
+    runtime.laserCannon.push(new LaserCannon(101, 530));
+    game.update(60);
+    expect(runtime.barriers[0].segments[0].isAlive).toBe(false);
+    expect(runtime.laserCannon[0].isAlive).toBe(0);
+    expect(invader.isAlive).toBe(1);
+    expect(session.players[0].score).toBe(0);
+
+    runtime.laserCannon.push(new LaserCannon(101, 530));
+    game.update(60);
+    expect(invader.isAlive).toBe(0);
+    expect(session.players[0].score).toBe(invader.points);
+  });
+
+  it('absorbs enemy shots with barriers without damaging the player or changing the score', () => {
+    game.update(2000);
+    for (let tick = 0; tick < 28; tick += 1) game.update(60);
+    const cell = runtime.barriers[0].segments.find((segment) => segment.y === 500);
+    const enemyShot = new LaserInvaders(cell.x + 1, cell.y + 4);
+    enemyShot.velocity = 6;
+    runtime.laserInvaders.push(enemyShot);
+    game.update(60);
+    expect(cell.isAlive).toBe(false);
+    expect(enemyShot.isAlive).toBe(0);
+    expect(session.players[0].lives).toBe(4);
+    expect(session.players[0].score).toBe(0);
+  });
+
+  it('keeps barrier damage across a respawn and recreates intact barriers for a new match', () => {
+    game.update(2000);
+    const firstBarrier = runtime.barriers[0];
+    firstBarrier.segments[0].isAlive = false;
+    runtime.laserInvaders.push(new LaserInvaders(60, 590));
+    game.update(60);
+    game.update(900);
+    expect(runtime.barriers[0]).toBe(firstBarrier);
+    expect(firstBarrier.segments[0].isAlive).toBe(false);
+
+    const nextRuntime = makeRuntime();
+    runtimeModule.createGameRuntime.mockReturnValue(nextRuntime);
+    manager.changeScene(2);
+    game.update(2000);
+    expect(nextRuntime.barriers).toHaveLength(4);
+    expect(nextRuntime.barriers[0]).not.toBe(firstBarrier);
+    expect(
+      nextRuntime.barriers.every((barrier) => barrier.segments.every((cell) => cell.isAlive))
+    ).toBe(true);
+  });
+
   it('blocks controls and freezes the formation during death, then restores gameplay', () => {
     game.update(2000);
     runtime.laserInvaders.push(new LaserInvaders(60, 590));

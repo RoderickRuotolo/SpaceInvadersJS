@@ -25,6 +25,7 @@ export const updatePlayerProjectiles = (stageState) => {
     const projectile = stageState.laserCannon[i];
 
     if (projectile.isAlive === 1) {
+      projectile.previousY = projectile.y;
       projectile.move();
 
       if (projectile.y < 0) {

@@ -3,6 +3,7 @@ export const createGameRuntime = () => ({
   directionInvaders: 1,
   ufo: [],
   cannon: null,
+  barriers: [],
   alienInvaders: [],
   laserCannon: [],
   laserInvaders: [],

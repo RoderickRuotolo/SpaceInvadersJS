@@ -6,6 +6,7 @@ export const MAX_ALIEN_PROJECTILES = 3;
 export const updateAlienProjectiles = (state, deltaMs, screenHeight, random = Math.random) => {
   state.laserInvaders = state.laserInvaders.filter((shot) => {
     if (!shot.isAlive) return false;
+    shot.previousY = shot.y;
     shot.move();
     return shot.y < screenHeight;
   });

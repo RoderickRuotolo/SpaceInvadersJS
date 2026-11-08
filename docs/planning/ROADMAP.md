@@ -48,10 +48,16 @@ active shots, selected from the lowest living invaders in each column. Shot spee
 is 6 pixels per fixed update. Manual browser playthrough and difficulty tuning pending.
 
 ### 4. Barriers/Shelters
-- [ ] Add barrier entities to stage initialization.
-- [ ] Implement destructible barrier segments.
-- [ ] Handle collisions: player shots vs barriers, alien shots vs barriers.
-- [ ] Prevent barriers from persisting incorrectly across new matches.
+- [x] Add barrier entities to stage initialization.
+- [x] Implement destructible barrier segments.
+- [x] Handle collisions: player shots vs barriers, alien shots vs barriers.
+- [x] Prevent barriers from persisting incorrectly across new matches.
+
+Four shelters at y=500 use 6x6 destructible segments with arched openings. Each
+shot is absorbed by the first intact segment along its swept path; holes let
+subsequent shots pass. Living invaders crush overlapping segments. Damage persists
+across player respawns; each new gameplay initialization creates intact shelters.
+Barrier hits do not award points. Manual browser playthrough pending.
 
 Completion criteria:
 - [ ] Full single-player loop: start -> play -> win/lose -> return flow works.

@@ -31,7 +31,7 @@ describe('SceneGame outcomes', () => {
     session.includePlayers(createPlayer());
     session.includePlayers(createPlayer());
     game = new SceneGame(session);
-    const makeScene = () => ({ enter: vi.fn(), exit: vi.fn() });
+    const makeScene = () => ({ enter: vi.fn(), exit: vi.fn(), update: vi.fn(), render: vi.fn() });
     winners = makeScene();
     losers = makeScene();
     manager = new ScenesManager([makeScene(), makeScene(), game, winners, losers]);
@@ -93,6 +93,7 @@ describe('SceneGame outcomes', () => {
 
     const nextRuntime = makeRuntime();
     runtimeModule.createGameRuntime.mockReturnValue(nextRuntime);
+    manager.changeScene(0);
     manager.changeScene(2);
     game.update(2000);
     expect(nextRuntime.barriers).toHaveLength(4);
@@ -173,6 +174,7 @@ describe('SceneGame outcomes', () => {
 
     const nextRuntime = makeRuntime();
     runtimeModule.createGameRuntime.mockReturnValue(nextRuntime);
+    manager.changeScene(0);
     manager.changeScene(2);
     game.update(2000);
     expect(nextRuntime.laserInvaders).toHaveLength(0);

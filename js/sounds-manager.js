@@ -32,7 +32,6 @@ export const SoundsManager = {
     }
   },
   playSoundTrack() {
-    console.log(this.backgroundSounds[this.currentSoundTrack]);
     this.playSound(this.backgroundSounds[this.currentSoundTrack]);
     this.nexSoundTrack();
   },

@@ -78,9 +78,14 @@ current page session (initial value 5000; no persistence across page reloads).
 Repeated Enter key events are ignored in menu/result scenes to avoid accidental starts.
 
 ### 2. Scene/State Reliability
-- [ ] Remove or gate debug logs in production path.
-- [ ] Add guardrails for invalid scene transitions.
-- [ ] Document scene transition contract in code comments/docs.
+- [x] Remove or gate debug logs in production path.
+- [x] Add guardrails for invalid scene transitions.
+- [x] Document scene transition contract in code comments/docs.
+
+Transitions validate indices and lifecycle hooks before exiting. Inactive/stale
+callbacks, nested transitions, duplicate activations and sequential navigation
+from results are rejected. Routine logs are removed; transition logging is opt-in
+with `new ScenesManager(gameScenes, { debug: true })`. See `docs/SCENE_TRANSITIONS.md`.
 
 ### 3. Integration-Oriented Tests
 - [x] Add tests for `SceneGame` outcome transitions (win/lose).

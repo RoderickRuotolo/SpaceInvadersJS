@@ -58,11 +58,11 @@ Scene.prototype.exit = function () {
 };
 
 Scene.prototype.requestNextScene = function (won) {
-  this.onNextScene(won);
+  return this.onNextScene(won);
 };
 
 Scene.prototype.requestSceneChange = function (index) {
-  this.onSceneChange(index);
+  return this.onSceneChange(index);
 };
 
 export const SceneMenu = function (session) {
@@ -366,10 +366,6 @@ export const SceneGame = function (session) {
       count = 0;
     }
 
-    if (count > 500) {
-      console.log('Gameplay started');
-    }
-
     count += 1;
   };
 
@@ -535,7 +531,7 @@ export const SceneLoser = function (session) {
 };
 SceneLoser.prototype = Object.create(Scene.prototype);
 
-export const ScenesManager = function (gameScenes) {
+export const ScenesManager = function (gameScenes, { debug = false } = {}) {
   this.currentScene = 0;
   this.won = false;
   this.gameScenes = gameScenes;
@@ -545,50 +541,87 @@ export const ScenesManager = function (gameScenes) {
   this.loopStepMs = 60;
   this.lastTimestamp = 0;
   this.accumulatedMs = 0;
+  let transitioning = false;
+  let activationId = 0;
+  let running = false;
 
   const configureSceneCallbacks = (scene) => {
+    const currentActivation = activationId;
+    const canRequest = () =>
+      !transitioning && this.activeScene === scene && activationId === currentActivation;
     scene.onNextScene = (won) => {
-      this.nextScene(won);
+      return canRequest() ? this.nextScene(won) : false;
     };
 
     scene.onSceneChange = (index) => {
-      this.changeScene(index);
+      return canRequest() ? this.changeScene(index) : false;
     };
   };
 
   for (let i = 0; i < this.gameScenes.length; i += 1) {
-    configureSceneCallbacks(this.gameScenes[i]);
+    if (this.gameScenes[i] && typeof this.gameScenes[i] === 'object') {
+      configureSceneCallbacks(this.gameScenes[i]);
+    }
   }
 
   this.changeScene = function (sceneIndex) {
-    if (sceneIndex < 0 || sceneIndex >= this.gameScenes.length) {
-      return;
+    // Validate before leaving the current scene; rejected requests have no side effects.
+    if (
+      transitioning ||
+      !Number.isInteger(sceneIndex) ||
+      sceneIndex < 0 ||
+      sceneIndex >= this.gameScenes.length
+    ) {
+      return false;
+    }
+    const target = this.gameScenes[sceneIndex];
+    if (
+      !target ||
+      !['enter', 'exit', 'update', 'render'].every((hook) => typeof target[hook] === 'function') ||
+      this.activeScene === target
+    ) {
+      return false;
     }
 
-    if (this.activeScene) {
-      this.activeScene.exit();
+    transitioning = true;
+    try {
+      const previous = this.activeScene;
+      this.activeScene = null;
+      activationId += 1;
+      if (previous) previous.exit();
+      this.currentScene = sceneIndex;
+      if (sceneIndex === 0) this.won = false;
+      this.activeScene = target;
+      configureSceneCallbacks(target);
+      target.enter();
+      if (debug) console.debug(`Current scene: ${this.currentScene}`);
+      return true;
+    } finally {
+      transitioning = false;
     }
-
-    this.currentScene = sceneIndex;
-    if (sceneIndex === 0) this.won = false;
-    this.activeScene = this.gameScenes[this.currentScene];
-    this.activeScene.enter();
-
-    console.log(`Current scene: ${this.currentScene} ${new Date()}`);
   };
 
   // SceneGame supplies its result; other scenes request a sequential transition.
   this.nextScene = function (won) {
+    if (transitioning || !this.activeScene) return false;
     if (this.currentScene === 2) {
-      if (typeof won === 'boolean') this.won = won;
-      this.changeScene(this.won ? 3 : 4);
-      return;
+      if (won !== undefined && typeof won !== 'boolean') return false;
+      const outcome = won ?? this.won;
+      const previousOutcome = this.won;
+      this.won = outcome;
+      if (!this.changeScene(outcome ? 3 : 4)) {
+        this.won = previousOutcome;
+        return false;
+      }
+      return true;
     }
 
-    this.changeScene(this.currentScene + 1);
+    if (this.currentScene !== 0 && this.currentScene !== 1) return false;
+    return this.changeScene(this.currentScene + 1);
   };
 
   this.loop = (timestamp) => {
+    if (!running) return;
     if (this.lastTimestamp === 0) {
       this.lastTimestamp = timestamp;
     }
@@ -597,18 +630,19 @@ export const ScenesManager = function (gameScenes) {
     this.lastTimestamp = timestamp;
     this.accumulatedMs += deltaMs;
 
-    while (this.accumulatedMs >= this.loopStepMs) {
+    while (running && this.accumulatedMs >= this.loopStepMs) {
       if (this.activeScene) {
         this.activeScene.update(this.loopStepMs);
-        this.activeScene.render();
+        if (running && this.activeScene) this.activeScene.render();
       }
       this.accumulatedMs -= this.loopStepMs;
     }
 
-    this.animationFrameId = window.requestAnimationFrame(this.loop);
+    if (running) this.animationFrameId = window.requestAnimationFrame(this.loop);
   };
 
   this.run = function () {
+    running = true;
     this.lastTimestamp = 0;
     this.accumulatedMs = 0;
 
@@ -618,18 +652,27 @@ export const ScenesManager = function (gameScenes) {
     }
 
     this.changeScene(0);
-    this.animationFrameId = window.requestAnimationFrame(this.loop);
+    if (running) this.animationFrameId = window.requestAnimationFrame(this.loop);
   };
 
   this.stop = function () {
+    running = false;
+    activationId += 1;
     if (this.animationFrameId !== null) {
       window.cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
     }
 
     if (this.activeScene) {
-      this.activeScene.exit();
+      const previous = this.activeScene;
       this.activeScene = null;
+      const wasTransitioning = transitioning;
+      transitioning = true;
+      try {
+        previous.exit();
+      } finally {
+        transitioning = wasTransitioning;
+      }
     }
   };
 };

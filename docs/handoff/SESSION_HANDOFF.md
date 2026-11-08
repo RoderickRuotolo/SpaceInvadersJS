@@ -38,7 +38,14 @@ Modernize the project with **vanilla JavaScript only** (no framework), preservin
   listeners on exit. Returning to the menu clears `ScenesManager.won`.
 - Repeated-match integration tests exercise three wins and three losses through
   real scenes, verifying resets and listener cleanup. Manual browser smoke pending.
-- Next task: scene/state reliability (debug logs, invalid transitions, contract docs).
+- Scene/state reliability completed: invalid destinations, same-scene requests,
+  stale/inactive callbacks and nested hook transitions are rejected. Callbacks are
+  scoped to each activation. Result scenes require explicit return navigation.
+  Stopping during update skips render and prevents further frame scheduling.
+- Routine debug logs removed. Optional transition diagnostics use
+  `new ScenesManager(gameScenes, { debug: true })`. Navigation contract is documented
+  in `docs/SCENE_TRANSITIONS.md`; regression tests cover guards and loop stopping.
+- Next implementation stage: alternating two-player mode (phase 3).
 - Local startup uses `npm start`; SoundJS 0.6.2 is vendored in `vendor/soundjs/`.
 - Smoke tests passed by user after each major step.
 - App running in browser with ES Modules.

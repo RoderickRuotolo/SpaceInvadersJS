@@ -26,7 +26,7 @@ describe('Result scene rendering', () => {
     vi.stubGlobal('window', { addEventListener: vi.fn(), removeEventListener: vi.fn() });
     const session = createSession(Definitions);
     session.includePlayers(createPlayer());
-    const placeholder = () => ({ enter: vi.fn(), exit: vi.fn() });
+    const placeholder = () => ({ enter: vi.fn(), exit: vi.fn(), update: vi.fn(), render: vi.fn() });
     const manager = new ScenesManager([
       placeholder(),
       placeholder(),

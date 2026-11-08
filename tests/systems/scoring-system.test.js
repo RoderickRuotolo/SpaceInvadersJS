@@ -15,7 +15,7 @@ describe('applyCollisionScoring', () => {
   });
 
   it('adds alien points and plays alien hit sound', () => {
-    const session = { players: [{ score: 0 }] };
+    const session = { players: [{ score: 0 }], hiScore: 5000 };
     const stageState = { scorePopups: [] };
 
     applyCollisionScoring(session, stageState, [{ type: 'alienHit', points: 30 }]);
@@ -26,7 +26,7 @@ describe('applyCollisionScoring', () => {
   });
 
   it('adds ufo points, creates popup and plays ufo sound', () => {
-    const session = { players: [{ score: 10 }] };
+    const session = { players: [{ score: 10 }], hiScore: 5000 };
     const stageState = { scorePopups: [] };
 
     applyCollisionScoring(session, stageState, [
@@ -36,5 +36,17 @@ describe('applyCollisionScoring', () => {
     expect(session.players[0].score).toBe(160);
     expect(stageState.scorePopups).toEqual([{ text: '150', x: 40, y: 60, life: 15 }]);
     expect(SoundsManager.playSound).toHaveBeenCalledWith('ufoLowpitch');
+  });
+
+  it('updates the record immediately when either kind of hit beats it and never lowers it', () => {
+    const session = { players: [{ score: 4990 }], hiScore: 5000 };
+    const state = { scorePopups: [] };
+    applyCollisionScoring(session, state, [{ type: 'alienHit', points: 30 }]);
+    expect(session.hiScore).toBe(5020);
+    applyCollisionScoring(session, state, [{ type: 'ufoHit', points: 150, textX: 0, textY: 0 }]);
+    expect(session.hiScore).toBe(5170);
+    session.players[0].score = 0;
+    applyCollisionScoring(session, state, [{ type: 'alienHit', points: 10 }]);
+    expect(session.hiScore).toBe(5170);
   });
 });

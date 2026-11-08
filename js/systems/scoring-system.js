@@ -27,5 +27,6 @@ export const applyCollisionScoring = (session, stageState, collisionEvents) => {
       });
       SoundsManager.playSound('ufoLowpitch');
     }
+    session.hiScore = Math.max(session.hiScore, session.players[0].score);
   }
 };

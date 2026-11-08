@@ -60,16 +60,22 @@ across player respawns; each new gameplay initialization creates intact shelters
 Barrier hits do not award points. Manual browser playthrough pending.
 
 Completion criteria:
-- [ ] Full single-player loop: start -> play -> win/lose -> return flow works.
+- [x] Full single-player loop: start -> play -> win/lose -> return flow works.
 - [ ] No runtime errors during a full manual playthrough.
 
 ## Phase 2 — Match Flow and Session Correctness
 Goal: ensure clean resets and deterministic progression.
 
 ### 1. Clean Match Reset
-- [ ] Reset cannon, invaders, UFO, projectiles, effects, timers, masks.
-- [ ] Ensure no objects from prior run leak into a new game.
-- [ ] Keep hi-score logic and current score behavior explicit.
+- [x] Reset cannon, invaders, UFO, projectiles, effects, timers, masks.
+- [x] Ensure no objects from prior run leak into a new game.
+- [x] Keep hi-score logic and current score behavior explicit.
+
+Result scenes display score/record and return to the menu on Enter. Starting from
+the menu resets players in place and gameplay entry creates a fresh runtime.
+The record updates immediately on scoring and survives new matches within the
+current page session (initial value 5000; no persistence across page reloads).
+Repeated Enter key events are ignored in menu/result scenes to avoid accidental starts.
 
 ### 2. Scene/State Reliability
 - [ ] Remove or gate debug logs in production path.
@@ -78,12 +84,17 @@ Goal: ensure clean resets and deterministic progression.
 
 ### 3. Integration-Oriented Tests
 - [x] Add tests for `SceneGame` outcome transitions (win/lose).
-- [ ] Add tests for gameplay reset behavior.
+- [x] Add tests for gameplay reset behavior.
 - [x] Add tests for lives decrement and game-over trigger.
 
 Completion criteria:
-- [ ] Game can be played repeatedly without stale state bugs.
-- [ ] New transition tests pass consistently.
+- [x] Game can be played repeatedly without stale state bugs.
+- [x] New transition tests pass consistently.
+
+Automated coverage exercises three successive matches through the real menu,
+instructions, gameplay, and each result scene, including listener cleanup and
+fresh timers, masks, barriers, projectiles, entities, effects and player state.
+Manual browser playthrough remains pending.
 
 ## Phase 3 — Two-Player Alternating Mode
 Goal: implement classic alternating turns (not simultaneous).

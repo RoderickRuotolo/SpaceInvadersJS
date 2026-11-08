@@ -29,7 +29,16 @@ Modernize the project with **vanilla JavaScript only** (no framework), preservin
 - Barrier damage persists through respawn and resets on gameplay initialization.
   Unit and SceneGame tests cover erosion, holes, shot priority, visibility, enemy
   impacts, and fresh-match barriers. Manual browser playthrough pending.
-- Next gameplay task: clean match resets and return-to-menu flow (phase 2).
+- Clean match resets and return-to-menu flow implemented: result scenes show score,
+  record and an Enter prompt; Enter returns to the menu. A new menu start calls
+  `resetMatch(session)` to reset players in place while preserving the record.
+  `SceneGame.enter` creates fresh gameplay state, including barriers and timers.
+- High score updates on scoring and persists only for the lifetime of the page;
+  no local storage is used. Menu/result controls ignore keyboard repeats and remove
+  listeners on exit. Returning to the menu clears `ScenesManager.won`.
+- Repeated-match integration tests exercise three wins and three losses through
+  real scenes, verifying resets and listener cleanup. Manual browser smoke pending.
+- Next task: scene/state reliability (debug logs, invalid transitions, contract docs).
 - Local startup uses `npm start`; SoundJS 0.6.2 is vendored in `vendor/soundjs/`.
 - Smoke tests passed by user after each major step.
 - App running in browser with ES Modules.

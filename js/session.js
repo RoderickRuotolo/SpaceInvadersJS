@@ -20,3 +20,9 @@ export const createPlayer = () => ({
     }
   },
 });
+
+// Preserve player references and the session record; reset only match state.
+export const resetMatch = (session) => {
+  session.hiScore = Math.max(session.hiScore, ...session.players.map((player) => player.score));
+  for (const player of session.players) Object.assign(player, createPlayer());
+};

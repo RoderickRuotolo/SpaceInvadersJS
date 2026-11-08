@@ -27,6 +27,7 @@ import {
 import { applyCollisionScoring } from './systems/scoring-system.js';
 import { createGameRuntime } from './runtime-state.js';
 import { getGameOutcome } from './systems/outcome-system.js';
+import { resetMatch } from './session.js';
 import { renderAlienProjectiles, updateAlienProjectiles } from './systems/alien-shooting-system.js';
 import { resolvePlayerDamage, updatePlayerRecovery } from './systems/player-damage-system.js';
 import {
@@ -74,9 +75,11 @@ export const SceneMenu = function (session) {
     Scene.prototype.enter.call(this);
 
     initGameListener = (e) => {
+      if (!this.isActive || e.repeat) return;
       const key = e.which || e.keyCode;
 
       if (key === 13) {
+        resetMatch(this.session);
         this.requestNextScene();
       } else if (key === 38 || key === 40) {
         Menu.altOption();
@@ -479,15 +482,40 @@ export const SceneGame = function (session) {
 };
 SceneGame.prototype = Object.create(Scene.prototype);
 
+const configureResultNavigation = (scene) => {
+  let returnListener = null;
+  scene.enter = function () {
+    Scene.prototype.enter.call(this);
+    returnListener = (event) => {
+      if (!this.isActive || event.repeat) return;
+      if ((event.which || event.keyCode) === 13) this.requestSceneChange(0);
+    };
+    window.addEventListener('keydown', returnListener);
+  };
+  scene.exit = function () {
+    window.removeEventListener('keydown', returnListener);
+    returnListener = null;
+    Scene.prototype.exit.call(this);
+  };
+};
+
+const drawResultDetails = (session) => {
+  ctx.fillText(`SCORE ${session.players[0].score}`, 10, 100);
+  ctx.fillText(`HI-SCORE ${session.hiScore}`, 10, 150);
+  ctx.fillText('Press ENTER to return to the menu', 10, 220);
+};
+
 export const SceneWinner = function (session) {
   Scene.call(this, session);
   this.sceneName = 'sceneWinner';
+  configureResultNavigation(this);
 
   this.render = function () {
     clearScreen(cv, ctx, this.session.definitions.backgroundColor);
     ctx.font = this.session.definitions.fontProperties;
     ctx.fillStyle = this.session.definitions.primaryColor;
     ctx.fillText('You Win! Thanks for Playing!', 10, 50);
+    drawResultDetails(this.session);
   };
 };
 SceneWinner.prototype = Object.create(Scene.prototype);
@@ -495,12 +523,14 @@ SceneWinner.prototype = Object.create(Scene.prototype);
 export const SceneLoser = function (session) {
   Scene.call(this, session);
   this.sceneName = 'sceneLoser';
+  configureResultNavigation(this);
 
   this.render = function () {
     clearScreen(cv, ctx, this.session.definitions.backgroundColor);
     ctx.font = this.session.definitions.fontProperties;
     ctx.fillStyle = this.session.definitions.primaryColor;
     ctx.fillText('You Lose!', 10, 50);
+    drawResultDetails(this.session);
   };
 };
 SceneLoser.prototype = Object.create(Scene.prototype);
@@ -540,6 +570,7 @@ export const ScenesManager = function (gameScenes) {
     }
 
     this.currentScene = sceneIndex;
+    if (sceneIndex === 0) this.won = false;
     this.activeScene = this.gameScenes[this.currentScene];
     this.activeScene.enter();
 

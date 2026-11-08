@@ -27,6 +27,16 @@ Then open [http://localhost:8081](http://localhost:8081).
 Opening `index.html` directly (`file://`) does not load the game's JavaScript modules;
 use the local server's HTTP address instead.
 
+## Controls and restarting
+
+- Menu: use Up/Down to select an option and Enter to start.
+- Gameplay: use Left/Right to move and Space to shoot.
+- Results: press Enter to return to the menu, then Enter again to start a new match.
+
+New matches reset both players' scores and lives and recreate all gameplay objects,
+including barriers. The high score is retained between matches while the page is
+open; reloading the page resets it to the initial value of 5000.
+
 ## Docs
 - Documentation index: `docs/README.md`
 - Session handoff: `docs/handoff/SESSION_HANDOFF.md`

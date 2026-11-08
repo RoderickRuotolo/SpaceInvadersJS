@@ -2,9 +2,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Definitions } from '../../js/config.js';
 import { setCanvasContext } from '../../js/context.js';
 import { SceneLoser, SceneWinner, ScenesManager } from '../../js/scenes.js';
-import { createSession } from '../../js/session.js';
+import { createPlayer, createSession } from '../../js/session.js';
 
-afterEach(() => setCanvasContext(null, null));
+afterEach(() => {
+  setCanvasContext(null, null);
+  vi.unstubAllGlobals();
+});
 
 describe('Result scene rendering', () => {
   it.each([
@@ -20,7 +23,9 @@ describe('Result scene rendering', () => {
       },
     };
     setCanvasContext({ width: 750, height: 680 }, context);
+    vi.stubGlobal('window', { addEventListener: vi.fn(), removeEventListener: vi.fn() });
     const session = createSession(Definitions);
+    session.includePlayers(createPlayer());
     const placeholder = () => ({ enter: vi.fn(), exit: vi.fn() });
     const manager = new ScenesManager([
       placeholder(),
@@ -36,6 +41,10 @@ describe('Result scene rendering', () => {
     expect(manager.currentScene).toBe(index);
     expect(context.fillRect).toHaveBeenCalledWith(0, 0, 750, 680);
     expect(textDraws).toContainEqual({ text: message, color: Definitions.primaryColor });
+    expect(textDraws).toContainEqual({
+      text: 'Press ENTER to return to the menu',
+      color: Definitions.primaryColor,
+    });
     expect(Definitions.primaryColor).not.toBe(Definitions.backgroundColor);
     manager.stop();
   });
